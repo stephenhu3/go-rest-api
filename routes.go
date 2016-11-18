@@ -42,4 +42,10 @@ var routes = Routes{
 		"/patients",
 		PatientCreate,
 	},
+	Route{
+		"PatientSearch",
+		"POST",
+		"/patients/search",
+		PatientSearch,
+	},
 }

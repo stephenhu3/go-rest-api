@@ -3,7 +3,7 @@ package main
 import "github.com/gocql/gocql"
 
 type Patient struct {
-	PatientUUID     gocql.UUID
+	PatientUUID     gocql.UUID `json:"patientUUID"`
 	Age             int    `json:"age"`
 	Gender          string `json:"gender"`
 	InsuranceNumber string `json:"insuranceNumber"`
@@ -11,8 +11,3 @@ type Patient struct {
 }
 
 type Patients []Patient
-
-func PatientMapJSON(p Patient) Patient {
-	
-	return p
-}

@@ -45,7 +45,8 @@ func TodoShow(w http.ResponseWriter, r *http.Request) {
 	// If we didn't find it, 404
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusNotFound)
-	if err := json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound, Text: "Not Found"}); err != nil {
+	if err := json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
+		Text: "Not Found"}); err != nil {
 		panic(err)
 	}
 
@@ -54,7 +55,8 @@ func TodoShow(w http.ResponseWriter, r *http.Request) {
 /*
 Test with this curl command:
 
-curl -H "Content-Type: application/json" -d '{"name":"New Todo"}' http://localhost:8080/todos
+curl -H "Content-Type: application/json" -d '{"name":"New Todo"}'
+http://localhost:8080/todos
 
 */
 func TodoCreate(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +86,7 @@ func TodoCreate(w http.ResponseWriter, r *http.Request) {
 
 /*
 Create a patient entry
-
+Method: POST
 Endpoint: /patients
 */
 func PatientCreate(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +118,8 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 		patientUUID, age, gender, insuranceNumber, name)
 
 	// insert new patient entry
-	if err := session.Query(`INSERT INTO patients (patientUuid, age, gender, name, insuranceNumber) VALUES (?, ?, ?, ?, ?)`,
+	if err := session.Query(`INSERT INTO patients (patientUuid, age, gender,
+		name, insuranceNumber) VALUES (?, ?, ?, ?, ?)`,
 		patientUUID, age, gender, insuranceNumber, name).Exec(); err != nil {
 		log.Fatal(err)
 	}
@@ -125,4 +128,59 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode("{\"status\": \"success\"}")
+}
+
+/*
+Search for a patient's info
+Method: POST
+Endpoint: /patients/search
+*/
+func PatientSearch(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster("127.0.0.1")
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+	var p Patient
+
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&p)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	var searchUUID gocql.UUID = p.PatientUUID
+
+	var patientUUID gocql.UUID
+	var age int
+	var gender string
+	var insuranceNumber string
+	var name string
+
+	// get the patient entry
+	if err := session.Query(`SELECT FROM patients WHERE patientUUID = ?`,
+		searchUUID).Consistency(gocql.One).Scan(&patientUUID, &age, &gender,
+			&insuranceNumber, &name); err == nil {
+		// patient was not found
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
+			Text: "Not Found"})
+		// w.WriteHeader(http.StatusNotFound)
+		log.Printf("Patient not found")
+		return
+	}
+
+	// else, patient was found
+	// TODO: Fix nil fields in response
+	if len(patientUUID) > 0 {
+		log.Printf("Patient was found")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		if err := json.NewEncoder(w).Encode(Patient{PatientUUID: patientUUID,
+			Age: age, Gender: gender, InsuranceNumber: insuranceNumber,
+			Name: name}); err != nil {
+			panic(err)
+		}
+	}
 }

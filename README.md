@@ -1,9 +1,15 @@
-# Example 9
+Pull repo to your Go workspace:
+```
+$GOPATH/src/github.com/{username}
+```
 
-## Running the exmaple
+Install the program to the bin directory of your workspace:
+```
+cd $GOPATH/src/
+go install github.com/{username}/go-rest
+```
 
-To run this exmaple, from the root of this project:
-
-```sh
-go run ./v9/*.go
+Run the program:
+```
+$GOPATH/bin/go-rest
 ```
