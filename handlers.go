@@ -162,7 +162,7 @@ func PatientSearch(w http.ResponseWriter, r *http.Request) {
 	// get the patient entry
 	if err := session.Query(`SELECT FROM patients WHERE patientUUID = ?`,
 		searchUUID).Consistency(gocql.One).Scan(&patientUUID, &age, &gender,
-			&insuranceNumber, &name); err == nil {
+		&insuranceNumber, &name); err == nil {
 		// patient was not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
@@ -183,4 +183,50 @@ func PatientSearch(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 	}
+}
+
+/*
+Create a future appointment
+Method: POST
+Endpoint: /futureappointment
+*/
+func FutureAppointmentCreate(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster("127.0.0.1")
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	var f FutureAppointment
+	err := decoder.Decode(&f)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	// generate new randomly generated UUID (version 4)
+	appointmentUuid, err := gocql.RandomUUID()
+	if err != nil {
+		log.Fatal(err)
+	}
+	patientUuid := f.PatientUuid
+	doctorUuid := f.DoctorUuid
+	dateScheduled := f.DateScheduled
+	notes := f.Notes
+	log.Printf("Created future appointment: %s\t%d\t%s\t%s\t%s",
+		appointmentUuid, patientUuid, doctorUuid, dateScheduled, notes)
+
+	// insert new appointment entry
+	if err := session.Query(`INSERT INTO futureAppointments (appointmentUuid,
+		patientUuid, doctorUuid, dateScheduled, notes) VALUES (?, ?, ?, ?, ?)`,
+		appointmentUuid, patientUuid, doctorUuid, dateScheduled, notes).Exec(); err != nil {
+		log.Fatal(err)
+	}
+
+	// send success response
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode("{\"status\": \"success\"}")
 }

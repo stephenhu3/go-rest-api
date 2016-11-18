@@ -13,11 +13,11 @@ CREATE TABLE patients (
 );
 
 
-CREATE TABLE completed_appointments (
+CREATE TABLE completedAppointments (
 	appointmentUuid uuid,
 	patientUuid uuid,
 	doctorUuid uuid,
-	dateVisited timestamp,
+	dateVisited int,
 	breathingRate int,
 	heartRate int,
 	bloodOxygenLevel int,
@@ -30,13 +30,14 @@ CREATE INDEX doctorUuid ON emr.completed_appointments (doctorUuid);
 CREATE INDEX dateVisited ON emr.completed_appointments (dateVisited);
 
 
-CREATE TABLE scheduled_appointments (
+CREATE TABLE futureAppointments (
 	appointmentUuid uuid,
 	patientUuid uuid,
 	doctorUuid uuid,
-	dateScheduled timestamp,
+	dateScheduled int,
+	notes text,
 	PRIMARY KEY (appointmentUuid)
 );
-CREATE INDEX patientUuid ON emr.scheduled_appointments (patientUuid);
-CREATE INDEX doctorUuid ON emr.scheduled_appointments (dateVisited);
-CREATE INDEX dateScheduled ON emr.scheduled_appointments (dateScheduled);
+CREATE INDEX patientUuid ON emr.futureAppointments (patientUuid);
+CREATE INDEX doctorUuid ON emr.futureAppointments (doctorUuid);
+CREATE INDEX dateScheduled ON emr.futureAppointments (dateScheduled);
