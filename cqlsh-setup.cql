@@ -3,6 +3,8 @@ CREATE KEYSPACE emr WITH replication = {
   'replication_factor': '1'
 };
 
+USE emr;
+
 CREATE TABLE patients (
 	patientUUID uuid,
 	age int,
