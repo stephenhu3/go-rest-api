@@ -27,9 +27,9 @@ CREATE TABLE completedAppointments (
 	notes text,
 	PRIMARY KEY (appointmentUuid)
 );
-CREATE INDEX patientUuid ON emr.completed_appointments (patientUuid);
-CREATE INDEX doctorUuid ON emr.completed_appointments (doctorUuid);
-CREATE INDEX dateVisited ON emr.completed_appointments (dateVisited);
+CREATE INDEX patientUuid ON emr.completedAppointments (patientUuid);
+CREATE INDEX doctorUuid ON emr.completedAppointments (doctorUuid);
+CREATE INDEX dateVisited ON emr.completedAppointments (dateVisited);
 
 
 CREATE TABLE futureAppointments (
@@ -40,6 +40,6 @@ CREATE TABLE futureAppointments (
 	notes text,
 	PRIMARY KEY (appointmentUuid)
 );
-CREATE INDEX patientUuid ON emr.futureAppointments (patientUuid);
-CREATE INDEX doctorUuid ON emr.futureAppointments (doctorUuid);
+CREATE INDEX schedPatientUuid ON emr.futureAppointments (patientUuid);
+CREATE INDEX schedDoctorUuid ON emr.futureAppointments (doctorUuid);
 CREATE INDEX dateScheduled ON emr.futureAppointments (dateScheduled);
