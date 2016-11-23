@@ -44,7 +44,7 @@ var routes = Routes{
 	},
 	Route{
 		"PatientSearch",
-		"POST",
+		"GET",
 		"/patients/search",
 		PatientSearch,
 	},

@@ -142,16 +142,12 @@ func PatientSearch(w http.ResponseWriter, r *http.Request) {
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
-	var p Patient
 
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&p)
-	if err != nil {
-		panic(err)
-	}
-	defer r.Body.Close()
-
-	var searchUUID gocql.UUID = p.PatientUUID
+	err := r.ParseForm()
+    if err != nil {
+       panic(err)
+    }
+    var searchUUID = r.Form["PatientUUID"][0]
 
 	var patientUUID gocql.UUID
 	var age int
@@ -160,9 +156,9 @@ func PatientSearch(w http.ResponseWriter, r *http.Request) {
 	var name string
 
 	// get the patient entry
-	if err := session.Query(`SELECT FROM patients WHERE patientUUID = ?`,
+	if err := session.Query("SELECT * FROM patients WHERE patientUUID = ?",
 		searchUUID).Consistency(gocql.One).Scan(&patientUUID, &age, &gender,
-		&insuranceNumber, &name); err == nil {
+		&insuranceNumber, &name); err != nil {
 		// patient was not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
@@ -177,6 +173,7 @@ func PatientSearch(w http.ResponseWriter, r *http.Request) {
 	if len(patientUUID) > 0 {
 		log.Printf("Patient was found")
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if err := json.NewEncoder(w).Encode(Patient{PatientUUID: patientUUID,
 			Age: age, Gender: gender, InsuranceNumber: insuranceNumber,
 			Name: name}); err != nil {
