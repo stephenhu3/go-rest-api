@@ -18,8 +18,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Welcome!\n")
 }
 // Added JSON config file and parser to read from, but removed for demo
-UIAddr string = "http://192.168.1.64:3000"
-CASSDB string = "127.0.0.1" 
+const UIAddr  = "http://192.168.1.64:3000"
+const CASSDB  = "127.0.0.1" 
 
 func Authenticate(w http.ResponseWriter, r *http.Request) {
 	log.Println("OK")
