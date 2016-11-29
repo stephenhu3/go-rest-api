@@ -19,6 +19,12 @@ var routes = Routes{
 		Index,
 	},
 	Route{
+		"Authenticate",
+		"POST",
+		"/login",
+		Authenticate,
+	},
+	Route{
 		"TodoIndex",
 		"GET",
 		"/todos",
@@ -44,7 +50,7 @@ var routes = Routes{
 	},
 	Route{
 		"PatientSearch",
-		"POST",
+		"GET",
 		"/patients/search",
 		PatientSearch,
 	},

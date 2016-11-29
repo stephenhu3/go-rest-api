@@ -13,12 +13,30 @@ import (
 	"github.com/gorilla/mux"
 )
 
+
 func Index(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Welcome!\n")
+}
+// Added JSON config file and parser to read from, but removed for demo
+const UIAddr  = "http://192.168.1.64:3000"
+const CASSDB  = "127.0.0.1" 
+
+func Authenticate(w http.ResponseWriter, r *http.Request) {
+	log.Println("OK")
+	w.Header().Set("Set-Cookie", "userToken=test; Path=/; HttpOnly")
+	w.Header().Set("Access-Control-Allow-Origin", UIAddr )
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.WriteHeader(http.StatusOK)
+	r.ParseForm()
+	
+	if err := json.NewEncoder(w).Encode(todos); err != nil {
+		panic(err)
+	}
 }
 
 func TodoIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", UIAddr )
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(todos); err != nil {
 		panic(err)
@@ -86,12 +104,12 @@ func TodoCreate(w http.ResponseWriter, r *http.Request) {
 
 /*
 Create a patient entry
-Method: POST
+Method: GET
 Endpoint: /patients
 */
 func PatientCreate(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
-	cluster := gocql.NewCluster("127.0.0.1")
+	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = "emr"
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
@@ -132,26 +150,22 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 
 /*
 Search for a patient's info
-Method: POST
-Endpoint: /patients/search
+Method: GET
+Endpoint: /patients/search?patientuuid=:patientuuid
 */
 func PatientSearch(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
-	cluster := gocql.NewCluster("127.0.0.1")
+	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = "emr"
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
-	var p Patient
 
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&p)
-	if err != nil {
-		panic(err)
-	}
-	defer r.Body.Close()
-
-	var searchUUID gocql.UUID = p.PatientUUID
+	err := r.ParseForm()
+    if err != nil {
+       panic(err)
+    }
+    var searchUUID = r.Form["patientuuid"][0]
 
 	var patientUUID gocql.UUID
 	var age int
@@ -160,9 +174,9 @@ func PatientSearch(w http.ResponseWriter, r *http.Request) {
 	var name string
 
 	// get the patient entry
-	if err := session.Query(`SELECT FROM patients WHERE patientUUID = ?`,
+	if err := session.Query("SELECT * FROM patients WHERE patientUUID = ?",
 		searchUUID).Consistency(gocql.One).Scan(&patientUUID, &age, &gender,
-		&insuranceNumber, &name); err == nil {
+		&insuranceNumber, &name); err != nil {
 		// patient was not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
@@ -173,10 +187,10 @@ func PatientSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// else, patient was found
-	// TODO: Fix nil fields in response
 	if len(patientUUID) > 0 {
 		log.Printf("Patient was found")
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if err := json.NewEncoder(w).Encode(Patient{PatientUUID: patientUUID,
 			Age: age, Gender: gender, InsuranceNumber: insuranceNumber,
 			Name: name}); err != nil {
@@ -192,7 +206,7 @@ Endpoint: /futureappointment
 */
 func FutureAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
-	cluster := gocql.NewCluster("127.0.0.1")
+	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = "emr"
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
