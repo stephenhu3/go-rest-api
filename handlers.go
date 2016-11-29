@@ -104,7 +104,7 @@ func TodoCreate(w http.ResponseWriter, r *http.Request) {
 
 /*
 Create a patient entry
-Method: POST
+Method: GET
 Endpoint: /patients
 */
 func PatientCreate(w http.ResponseWriter, r *http.Request) {
@@ -150,8 +150,8 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 
 /*
 Search for a patient's info
-Method: POST
-Endpoint: /patients/search
+Method: GET
+Endpoint: /patients/search?patientuuid=:patientuuid
 */
 func PatientSearch(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
@@ -165,7 +165,7 @@ func PatientSearch(w http.ResponseWriter, r *http.Request) {
     if err != nil {
        panic(err)
     }
-    var searchUUID = r.Form["PatientUUID"][0]
+    var searchUUID = r.Form["patientuuid"][0]
 
 	var patientUUID gocql.UUID
 	var age int
@@ -187,7 +187,6 @@ func PatientSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// else, patient was found
-	// TODO: Fix nil fields in response
 	if len(patientUUID) > 0 {
 		log.Printf("Patient was found")
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
