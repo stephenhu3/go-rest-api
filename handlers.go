@@ -153,7 +153,7 @@ Search for a patient's info
 Method: GET
 Endpoint: /patients/search?patientuuid=:patientuuid
 */
-func PatientSearch(w http.ResponseWriter, r *http.Request) {
+func PatientGet(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = "emr"

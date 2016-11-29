@@ -80,11 +80,11 @@ HTTP 200
 
 ```json
 
-	"PatientUUID": 69,
-	"Age": "F",
-	"Gender": "Female",
-	"InsuranceNumber": "1234567890",
-	"Name": "Kelly"
+	"patientUuid": "e0736160-82b1-4def-b40b-95f899732024",
+	"age": "27",
+	"gender": "Female",
+	"insuranceNumber": "1234567890",
+	"name": "Kelly"
 }
 ```
 

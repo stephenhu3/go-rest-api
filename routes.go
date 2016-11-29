@@ -49,10 +49,10 @@ var routes = Routes{
 		PatientCreate,
 	},
 	Route{
-		"PatientSearch",
+		"PatientGet",
 		"GET",
 		"/patients/search",
-		PatientSearch,
+		PatientGet,
 	},
 	Route{
 		"FutureAppointmentCreate",
