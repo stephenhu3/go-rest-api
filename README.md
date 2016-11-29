@@ -41,6 +41,8 @@ HTTP 200
 }
 ```
 
+-------------------------------------------------------
+
 POST {domain}/futureappointments
 
 **Create a future appointment**
@@ -65,3 +67,25 @@ HTTP 200
 	"status": "success"
 }
 ```
+
+-------------------------------------------------------
+
+GET /patients/search?patientuuid=:patientuuid
+
+**Retrieves a patient record**
+
+Response:
+
+HTTP 200
+
+```json
+
+	"PatientUUID": 69,
+	"Age": "F",
+	"Gender": "Female",
+	"InsuranceNumber": "1234567890",
+	"Name": "Kelly"
+}
+```
+
+-------------------------------------------------------

@@ -104,7 +104,7 @@ func TodoCreate(w http.ResponseWriter, r *http.Request) {
 
 /*
 Create a patient entry
-Method: GET
+Method: POST
 Endpoint: /patients
 */
 func PatientCreate(w http.ResponseWriter, r *http.Request) {
