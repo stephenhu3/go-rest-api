@@ -225,8 +225,8 @@ func FutureAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	patientUuid := f.PatientUuid
-	doctorUuid := f.DoctorUuid
+	patientUuid := f.PatientUUID
+	doctorUuid := f.DoctorUUID
 	dateScheduled := f.DateScheduled
 	notes := f.Notes
 	log.Printf("Created future appointment: %s\t%d\t%s\t%s\t%s",
@@ -243,4 +243,56 @@ func FutureAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode("{\"status\": \"success\"}")
+}
+
+
+/*
+Search for info on a future appointment
+Method: GET
+Endpoint: /futureappointments/search?appointmentuuid=:appointmentuuid
+*/
+func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	err := r.ParseForm()
+    if err != nil {
+       panic(err)
+    }
+    var searchUUID = r.Form["appointmentuuid"][0]
+
+	var appointmentUUID gocql.UUID
+	var patientUUID gocql.UUID
+	var doctorUUID gocql.UUID
+	var dateScheduled int
+	var notes string
+
+	// get the patient entry
+	if err := session.Query("SELECT * FROM futureAppointments WHERE appointmentUUID = ?",
+		searchUUID).Consistency(gocql.One).Scan(&appointmentUUID, &dateScheduled,
+			&doctorUUID, &patientUUID, &notes); err != nil {
+		// appointment was not found
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
+			Text: "Not Found"})
+		// w.WriteHeader(http.StatusNotFound)
+		log.Printf("Appointment not found")
+		return
+	}
+
+	// else, appointment was found
+	if len(appointmentUUID) > 0 {
+		log.Printf("Appointment was found")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		if err := json.NewEncoder(w).Encode(FutureAppointment{AppointmentUUID: appointmentUUID,
+			PatientUUID: patientUUID, DoctorUUID: doctorUUID, DateScheduled: dateScheduled,
+			Notes: notes}); err != nil {
+			panic(err)
+		}
+	}
 }

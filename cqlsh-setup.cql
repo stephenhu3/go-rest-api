@@ -1,7 +1,8 @@
-CREATE KEYSPACE emr WITH replication = {
-  'class': 'SimpleStrategy',
-  'replication_factor': '1'
-};
+CREATE KEYSPACE IF NOT EXISTS emr
+	WITH replication = {
+	  'class': 'SimpleStrategy',
+	  'replication_factor': '1'
+	};
 
 USE emr;
 
@@ -11,35 +12,35 @@ CREATE TABLE patients (
 	gender text,
 	name text,
 	insuranceNumber text,
-	PRIMARY KEY (patientUuid)
+	PRIMARY KEY (patientUUID)
 );
 
 
 CREATE TABLE completedAppointments (
-	appointmentUuid uuid,
-	patientUuid uuid,
-	doctorUuid uuid,
+	appointmentUUID uuid,
+	patientUUID uuid,
+	doctorUUID uuid,
 	dateVisited int,
 	breathingRate int,
 	heartRate int,
 	bloodOxygenLevel int,
 	bloodPressure int,
 	notes text,
-	PRIMARY KEY (appointmentUuid)
+	PRIMARY KEY (appointmentUUID)
 );
-CREATE INDEX patientUuid ON emr.completedAppointments (patientUuid);
-CREATE INDEX doctorUuid ON emr.completedAppointments (doctorUuid);
-CREATE INDEX dateVisited ON emr.completedAppointments (dateVisited);
+CREATE INDEX completedAppointmentPatientUUID ON emr.completedAppointments (patientUUID);
+CREATE INDEX completedAppointmentdoctorUUID ON emr.completedAppointments (doctorUUID);
+CREATE INDEX completedAppointmentdateVisited ON emr.completedAppointments (dateVisited);
 
 
 CREATE TABLE futureAppointments (
-	appointmentUuid uuid,
-	patientUuid uuid,
-	doctorUuid uuid,
+	appointmentUUID uuid,
+	patientUUID uuid,
+	doctorUUID uuid,
 	dateScheduled int,
 	notes text,
-	PRIMARY KEY (appointmentUuid)
+	PRIMARY KEY (appointmentUUID)
 );
-CREATE INDEX schedPatientUuid ON emr.futureAppointments (patientUuid);
-CREATE INDEX schedDoctorUuid ON emr.futureAppointments (doctorUuid);
+CREATE INDEX futureAppointmentPatientUUID ON emr.futureAppointments (patientUUID);
+CREATE INDEX futureAppointmentDoctorUUID ON emr.futureAppointments (doctorUUID);
 CREATE INDEX dateScheduled ON emr.futureAppointments (dateScheduled);

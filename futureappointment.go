@@ -3,9 +3,11 @@ package main
 import "github.com/gocql/gocql"
 
 type FutureAppointment struct {
-	AppointmentUuid gocql.UUID `json:"appointmentUuid"`
-	PatientUuid     gocql.UUID `json:"patientUuid"`
-	DoctorUuid      gocql.UUID `json:"doctorUuid"`
+	AppointmentUUID gocql.UUID `json:"appointmentUUID"`
+	PatientUUID     gocql.UUID `json:"patientUUID"`
+	DoctorUUID      gocql.UUID `json:"doctorUUID"`
 	DateScheduled   int        `json:"dateScheduled"`
 	Notes           string     `json:"notes"`
 }
+
+type FutureAppointments []FutureAppointment

@@ -60,4 +60,10 @@ var routes = Routes{
 		"/futureappointments",
 		FutureAppointmentCreate,
 	},
+	Route{
+		"FutureAppointmentGet",
+		"GET",
+		"/futureappointments/search",
+		FutureAppointmentGet,
+	},
 }
