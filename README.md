@@ -3,11 +3,18 @@ Pull repo to your Go workspace:
 $GOPATH/src/github.com/{username}
 ```
 
+Requirement:
+Gorilla MUX
+```
+go get github.com/gorilla/mux
+```
+
 Install the program to the bin directory of your workspace:
 ```
 cd $GOPATH/src/
 go install github.com/{username}/go-rest
 ```
+
 
 Run the program:
 ```
