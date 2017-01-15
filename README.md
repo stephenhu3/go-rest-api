@@ -89,3 +89,32 @@ HTTP 200
 ```
 
 -------------------------------------------------------
+
+GET /patients/searchList?doctoruuid=:doctoruuid
+
+**Retrieves a list of patients under a doctor with basic info **
+
+Response:
+
+HTTP 200
+
+```json
+[
+	{
+		"patientUuid": "e0736160-82b1-4def-b40b-95f899732024",
+		"details": {
+			"name": "Kelly",
+			"age":"27",
+			"gender": "Female",
+			"insuranceNumber": "1234567890",
+			"DOB": "ISOString",
+			"address": "United States",
+			"phoneNumber": "778-390-4482"
+		}
+	},
+	...
+]
+}
+```
+
+-------------------------------------------------------
