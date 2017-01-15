@@ -105,7 +105,6 @@ HTTP 302 Found
 }
 ```
 -------------------------------------------------------
--------------------------------------------------------
 POST {domain}/completedappointments
 
 **Create a completed appointment entry**
@@ -157,4 +156,40 @@ HTTP 302 Found
   "notes": "do blood test"
 }
 ```
+-------------------------------------------------------
+GET /patients/bydoctor?doctoruuid=:doctoruuid
+
+**Retrieves a list of patients under a doctor with basic info **
+
+Response:
+
+HTTP 200 OK
+
+```json
+[
+	{
+		"patientUuid": "e0736160-82b1-4def-b40b-95f899732024",
+		"name": "Kelly",
+		"age":"27",
+		"gender": "Female",
+		"medicalNumber": "1234567890",
+		"dateOfBirth": "ISOString",
+		"dateOfDeath": "ISOString",
+		"ethnicity": "Asian",
+		"address": "",
+		"phoneNumber": "778-390-4482",
+		"notes": "ISOString",
+		"emergencyContact": {
+			"name": "rick",
+			"phoneNumber":"705-190-4482",
+			"address": "",
+			"relationship": "Brother"
+		}
+		
+	},
+	...
+]
+}
+```
+
 -------------------------------------------------------
