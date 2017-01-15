@@ -274,7 +274,7 @@ func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	// get the patient entry
 	if err := session.Query("SELECT * FROM futureAppointments WHERE appointmentUUID = ?",
 		searchUUID).Consistency(gocql.One).Scan(&appointmentUUID, &dateScheduled,
-			&doctorUUID, &patientUUID, &notes); err != nil {
+			&doctorUUID, &notes, &patientUUID); err != nil {
 		// appointment was not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
