@@ -24,6 +24,7 @@ var routes = Routes{
 		"/login",
 		Authenticate,
 	},
+	// Todo sample routes
 	Route{
 		"TodoIndex",
 		"GET",
@@ -42,6 +43,7 @@ var routes = Routes{
 		"/todos/{todoId}",
 		TodoShow,
 	},
+	// End todo samples
 	Route{
 		"PatientCreate",
 		"POST",
@@ -65,5 +67,17 @@ var routes = Routes{
 		"GET",
 		"/futureappointments/search",
 		FutureAppointmentGet,
+	},
+	Route{
+		"CompletedAppointmentCreate",
+		"POST",
+		"/completedappointments",
+		CompletedAppointmentCreate,
+	},
+	Route{
+		"CompletedAppointmentGet",
+		"GET",
+		"/completedappointments/search",
+		CompletedAppointmentGet,
 	},
 }

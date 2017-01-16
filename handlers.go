@@ -13,22 +13,22 @@ import (
 	"github.com/gorilla/mux"
 )
 
-
 func Index(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Welcome!\n")
 }
+
 // Added JSON config file and parser to read from, but removed for demo
-const UIAddr  = "http://192.168.1.64:3000"
-const CASSDB  = "127.0.0.1" 
+const UIAddr = "http://192.168.1.64:3000"
+const CASSDB = "127.0.0.1"
 
 func Authenticate(w http.ResponseWriter, r *http.Request) {
 	log.Println("OK")
 	w.Header().Set("Set-Cookie", "userToken=test; Path=/; HttpOnly")
-	w.Header().Set("Access-Control-Allow-Origin", UIAddr )
+	w.Header().Set("Access-Control-Allow-Origin", UIAddr)
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.WriteHeader(http.StatusOK)
 	r.ParseForm()
-	
+
 	if err := json.NewEncoder(w).Encode(todos); err != nil {
 		panic(err)
 	}
@@ -36,7 +36,7 @@ func Authenticate(w http.ResponseWriter, r *http.Request) {
 
 func TodoIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Header().Set("Access-Control-Allow-Origin", UIAddr )
+	w.Header().Set("Access-Control-Allow-Origin", UIAddr)
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(todos); err != nil {
 		panic(err)
@@ -63,8 +63,8 @@ func TodoShow(w http.ResponseWriter, r *http.Request) {
 	// If we didn't find it, 404
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusNotFound)
-	if err := json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
-		Text: "Not Found"}); err != nil {
+	if err := json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+		Message: "Not Found"}); err != nil {
 		panic(err)
 	}
 
@@ -145,7 +145,8 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 	// send success response
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode("{\"status\": \"success\"}")
+	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
+		Message: "Patient entry successfully created."})
 }
 
 /*
@@ -162,10 +163,10 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 	defer session.Close()
 
 	err := r.ParseForm()
-    if err != nil {
-       panic(err)
-    }
-    var searchUUID = r.Form["patientuuid"][0]
+	if err != nil {
+		panic(err)
+	}
+	var searchUUID = r.Form["patientuuid"][0]
 
 	var patientUUID gocql.UUID
 	var age int
@@ -179,9 +180,9 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 		&insuranceNumber, &name); err != nil {
 		// patient was not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
-			Text: "Not Found"})
-		// w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+			Message: "Not Found"})
 		log.Printf("Patient not found")
 		return
 	}
@@ -191,6 +192,7 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Patient was found")
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusFound)
 		if err := json.NewEncoder(w).Encode(Patient{PatientUUID: patientUUID,
 			Age: age, Gender: gender, InsuranceNumber: insuranceNumber,
 			Name: name}); err != nil {
@@ -225,26 +227,26 @@ func FutureAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	patientUuid := f.PatientUUID
-	doctorUuid := f.DoctorUUID
+	patientUUID := f.PatientUUID
+	doctorUUID := f.DoctorUUID
 	dateScheduled := f.DateScheduled
 	notes := f.Notes
 	log.Printf("Created future appointment: %s\t%d\t%s\t%s\t%s",
-		appointmentUuid, patientUuid, doctorUuid, dateScheduled, notes)
+		appointmentUuid, patientUUID, doctorUUID, dateScheduled, notes)
 
 	// insert new appointment entry
 	if err := session.Query(`INSERT INTO futureAppointments (appointmentUuid,
-		patientUuid, doctorUuid, dateScheduled, notes) VALUES (?, ?, ?, ?, ?)`,
-		appointmentUuid, patientUuid, doctorUuid, dateScheduled, notes).Exec(); err != nil {
+		patientUUID, doctorUUID, dateScheduled, notes) VALUES (?, ?, ?, ?, ?)`,
+		appointmentUuid, patientUUID, doctorUUID, dateScheduled, notes).Exec(); err != nil {
 		log.Fatal(err)
 	}
 
 	// send success response
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode("{\"status\": \"success\"}")
+	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
+		Message: "Appointment entry successfully created."})
 }
-
 
 /*
 Search for info on a future appointment
@@ -260,10 +262,10 @@ func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	defer session.Close()
 
 	err := r.ParseForm()
-    if err != nil {
-       panic(err)
-    }
-    var searchUUID = r.Form["appointmentuuid"][0]
+	if err != nil {
+		panic(err)
+	}
+	var searchUUID = r.Form["appointmentuuid"][0]
 
 	var appointmentUUID gocql.UUID
 	var patientUUID gocql.UUID
@@ -271,15 +273,15 @@ func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	var dateScheduled int
 	var notes string
 
-	// get the patient entry
+	// get the appointment entry
 	if err := session.Query("SELECT * FROM futureAppointments WHERE appointmentUUID = ?",
 		searchUUID).Consistency(gocql.One).Scan(&appointmentUUID, &dateScheduled,
-			&doctorUUID, &patientUUID, &notes); err != nil {
+		&doctorUUID, &patientUUID, &notes); err != nil {
 		// appointment was not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound,
-			Text: "Not Found"})
-		// w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+			Message: "Not Found"})
 		log.Printf("Appointment not found")
 		return
 	}
@@ -289,9 +291,121 @@ func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Appointment was found")
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusFound)
 		if err := json.NewEncoder(w).Encode(FutureAppointment{AppointmentUUID: appointmentUUID,
 			PatientUUID: patientUUID, DoctorUUID: doctorUUID, DateScheduled: dateScheduled,
 			Notes: notes}); err != nil {
+			panic(err)
+		}
+	}
+}
+
+/*
+Create a completed appointment
+Method: POST
+Endpoint: /completedappointments
+*/
+func CompletedAppointmentCreate(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	var c CompletedAppointment
+	err := decoder.Decode(&c)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	// generate new randomly generated UUID (version 4)
+	appointmentUuid, err := gocql.RandomUUID()
+	if err != nil {
+		log.Fatal(err)
+	}
+	patientUUID := c.PatientUUID
+	doctorUUID := c.DoctorUUID
+	dateVisited := c.DateVisited
+	breathingRate := c.BreathingRate
+	heartRate := c.HeartRate
+	bloodOxygenLevel := c.BloodOxygenLevel
+	bloodPressure := c.BloodPressure
+	notes := c.Notes
+	log.Printf("Created completed  appointment: %s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\t",
+		appointmentUuid, patientUUID, doctorUUID, dateVisited, breathingRate, heartRate,
+		bloodOxygenLevel, bloodPressure, notes)
+
+	// insert new completed appointment entry
+	if err := session.Query(`INSERT INTO completedAppointments (appointmentUuid,
+		patientUUID, doctorUUID, dateVisited, breathingRate, heartRate, bloodOxygenLevel,
+		bloodPressure, notes) VALUES (?, ?, ?, ?, ?, ? , ?, ?, ?)`,
+		appointmentUuid, patientUUID, doctorUUID, dateVisited, breathingRate, heartRate,
+		bloodOxygenLevel, bloodPressure, notes).Exec(); err != nil {
+		log.Fatal(err)
+	}
+
+	// send success response
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
+		Message: "Appointment entry successfully created."})
+}
+
+/*
+Search for info on a completed appointment
+Method: GET
+Endpoint: /completedappointments/search?appointmentuuid=:appointmentuuid
+*/
+func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	err := r.ParseForm()
+	if err != nil {
+		panic(err)
+	}
+	var searchUUID = r.Form["appointmentuuid"][0]
+
+	var appointmentUUID gocql.UUID
+	var patientUUID gocql.UUID
+	var doctorUUID gocql.UUID
+	var dateVisited int
+	var breathingRate int
+	var heartRate int
+	var bloodOxygenLevel int
+	var bloodPressure int
+	var notes string
+
+	// get the appointment entry (match arguments with alphabetical positioning of retrieved columns)
+	if err := session.Query("SELECT * FROM completedAppointments WHERE appointmentUUID = ?",
+		searchUUID).Consistency(gocql.One).Scan(&appointmentUUID, &bloodOxygenLevel, &bloodPressure,
+		&breathingRate, &dateVisited, &doctorUUID, &heartRate, &notes, &patientUUID); err != nil {
+		// appointment was not found
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+			Message: "Not Found"})
+		log.Printf("Appointment not found")
+		return
+	}
+
+	// else, appointment was found
+	if len(appointmentUUID) > 0 {
+		log.Printf("Appointment was found")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusFound)
+		if err := json.NewEncoder(w).Encode(CompletedAppointment{AppointmentUUID: appointmentUUID,
+			PatientUUID: patientUUID, DoctorUUID: doctorUUID, DateVisited: dateVisited,
+			BreathingRate: breathingRate, HeartRate: heartRate, BloodOxygenLevel: bloodOxygenLevel,
+			BloodPressure: bloodPressure, Notes: notes}); err != nil {
 			panic(err)
 		}
 	}
