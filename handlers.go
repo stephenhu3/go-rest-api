@@ -285,7 +285,7 @@ func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Appointment not found")
 		return
 	}
-
+  
 	// else, appointment was found
 	if len(appointmentUUID) > 0 {
 		log.Printf("Appointment was found")
