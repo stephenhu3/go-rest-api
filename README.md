@@ -13,8 +13,9 @@ Run the program:
 ```
 $GOPATH/bin/go-rest
 ```
-
-API Reference
+-------------------------------------------------------
+# API Reference
+-------------------------------------------------------
 
 POST {domain}/patients
 
@@ -33,16 +34,33 @@ Request:
 
 Response:
 
-HTTP 200
+HTTP 201 Created
 
 ```json
 {
-	"status": "success"
+  "code": 201,
+  "message": "Patient entry successfully created."
 }
 ```
-
 -------------------------------------------------------
+GET /patients/search?patientuuid=:patientuuid
 
+**Retrieves a patient record**
+
+Response:
+
+HTTP 302 Found
+
+```json
+{
+  "patientUUID": "ce3aa844-25cf-4794-9486-83fec2358138",
+  "age": 69,
+  "gender": "F",
+  "insuranceNumber": "Kelly",
+  "name": "1234567890"
+}
+```
+-------------------------------------------------------
 POST {domain}/futureappointments
 
 **Create a future appointment**
@@ -60,32 +78,83 @@ Request:
 
 Response:
 
-HTTP 200
+HTTP 201 Created
 
 ```json
 {
-	"status": "success"
+  "code": 201,
+  "message": "Appointment entry successfully created."
 }
 ```
-
 -------------------------------------------------------
+GET /futureappointments/search?appointmentuuid=:appointmentuuid
 
-GET /patients/search?patientuuid=:patientuuid
-
-**Retrieves a patient record**
+**Retrieves a scheduled appointment record**
 
 Response:
 
-HTTP 200
+HTTP 302 Found
 
 ```json
+{
+  "appointmentUUID": "6b8337bb-b602-4141-aff0-eb52617f1ef9",
+  "patientUUID": "36cb5853-758b-44ec-86b4-55cbac3c8afd",
+  "doctorUUID": "57c7aea1-9fea-422d-ae35-dbf8ce5f5dda",
+  "dateScheduled": 0,
+  "notes": "do blood test"
+}
+```
+-------------------------------------------------------
+-------------------------------------------------------
+POST {domain}/completedappointments
 
-	"patientUuid": "e0736160-82b1-4def-b40b-95f899732024",
-	"age": "27",
-	"gender": "Female",
-	"insuranceNumber": "1234567890",
-	"name": "Kelly"
+**Create a completed appointment entry**
+
+Request:
+
+```json
+{
+    "patientUuid": "36cb5853-758b-44ec-86b4-55cbac3c8afd",
+    "doctorUuid": "57c7aea1-9fea-422d-ae35-dbf8ce5f5dda",
+    "notes": "do blood test",
+	"dateVisited": 1479463552,
+	"breathingRate": 10,
+	"heartRate": 97,
+	"bloodOxygenLevel": 4,
+	"bloodPressure": 108
 }
 ```
 
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "code": 201,
+  "message": "Appointment entry successfully created."
+}
+```
+-------------------------------------------------------
+GET /futureappointments/search?appointmentuuid=:appointmentuuid
+
+**Retrieves a completed appointment entry**
+
+Response:
+
+HTTP 302 Found
+
+```json
+{
+  "appointmentUUID": "4ecafa28-b412-45d9-af2a-758c19bdc433",
+  "patientUUID": "36cb5853-758b-44ec-86b4-55cbac3c8afd",
+  "doctorUUID": "57c7aea1-9fea-422d-ae35-dbf8ce5f5dda",
+  "dateVisited": 1479463552,
+  "breathingRate": 10,
+  "heartRate": 97,
+  "bloodOxygenLevel": 4,
+  "bloodPressure": 108,
+  "notes": "do blood test"
+}
+```
 -------------------------------------------------------
