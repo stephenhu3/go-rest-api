@@ -4,28 +4,26 @@ import "github.com/gocql/gocql"
 
 type Patient struct {
 	PatientUUID     gocql.UUID `json:"patientUUID"`
-	Age             int        `json:"age"`
-	Gender          string     `json:"gender"`
-	InsuranceNumber string     `json:"insuranceNumber"`
-	Name            string     `json:"name"`
-}
-
-type PatientListEntry struct {
-	PatientUUID     gocql.UUID 		`json:"patientUUID"`
-	Details         PatientDetails	`json:"Details"`
-}
-
-type PatientDetails struct {
 	Name			string		`json:"name"`
 	Age 			int			`json:"age"`
 	Gender 			string		`json:"gender"`
-	InsuranceNumber string		`json:"insuranceNumber"`
-	DateOfBirth 	string		`json:"DOB"`
+	InsuranceNumber	string		`json:"medicalNumber"`
+	DateOfBirth 	string		`json:"dateOfBirth"`
+	DateOfDeath 	string		`json:"Details"`
+	Ethnicity 		string		`json:"ethnicity"`
+	
 	Address 		string		`json:"address"`
 	PhoneNumber 	string		`json:"phoneNumber"`
+	Notes 			string		`json:"notes"`
+	EmerContact 	EmergencyContact `json:"emergencyContact"`
 }
 
-type PatientByList []PatientListEntry
+type EmergencyContact struct {
+	Name 			string		`json:"name"`
+	PhoneNumber 	string		`json:"phoneNumber"`
+	Address 		string		`json:"address"`
+	Relationship 	string		`json:"relationship"`
+}
 
 
 type Patients []Patient

@@ -180,7 +180,7 @@ HTTP 200 OK
 		"phoneNumber": "778-390-4482",
 		"notes": "ISOString",
 		"emergencyContact": {
-			"name": "rick",
+			"name": "Rick",
 			"phoneNumber":"705-190-4482",
 			"address": "",
 			"relationship": "Brother"
