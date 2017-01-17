@@ -204,9 +204,9 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 /*
 Returns a list of patients seen by a specific doctor
 Method: GET
-Endpoint: //patients/searchList?doctoruuid=:doctoruuid
+Endpoint: //patients/search?doctoruuid=:doctoruuid
 */
-func PatientGetList(w http.ResponseWriter, r *http.Request) {
+func PatientGetByDoctor(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = "emr"
@@ -230,21 +230,26 @@ func PatientGetList(w http.ResponseWriter, r *http.Request) {
 
 	// Iterate through returned rows and scan rows 
 	// Return unique patients with Unmarshaled JSON string (in Notes) for basic patient info
-	m := make(map[gocql.UUID] PatientListEntry)
+	m := make(map[gocql.UUID] Patient)
 	for iter.Scan( &patientUUID, &notes){
 		if _, found := m[patientUUID]; !found{
-			details := PatientDetails{}
-			if marshalErr := json.Unmarshal([]byte(notes), &details); marshalErr != nil{
+			currentPatient := Patient{}
+			if marshalErr := json.Unmarshal([]byte(notes), &currentPatient); marshalErr != nil{
 				log.Println("Patient details malformed at patientuuid", patientUUID)
 				continue
 			}
-			m[patientUUID] = PatientListEntry{ PatientUUID:patientUUID, Details: details }
+			currentPatient.PatientUUID = patientUUID;
+			m[patientUUID] = currentPatient
 		}
 	}
 
 	// Error in iteration returned upon iter.Close()
-	if err := iter.Close(); err !=nil {
-		log.Printf("PatientList not found")
+	// Or no Patients found
+	if err := iter.Close(); err !=nil || len(m) == 0 {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,Message: "Not Found"})
+		log.Printf("PatientLists not found")
 		log.Println(err)
 		return
 	}
@@ -254,9 +259,10 @@ func PatientGetList(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Patients found")
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusFound)
 
 		i := 0
-		patientList := make([]PatientListEntry, len(m))
+		patientList := make([]Patient, len(m))
 		for _, v := range m {
 			patientList[i] = v
 			i++
