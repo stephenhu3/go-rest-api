@@ -53,13 +53,13 @@ var routes = Routes{
 	Route{
 		"PatientGet",
 		"GET",
-		"/patients/search",
+		"/patients/patientuuid/{patientuuid}",
 		PatientGet,
 	},
 	Route{
 		"PatientGetByDoctor",
 		"GET",
-		"/patients/bydoctor",
+		"/patients/doctoruuid/{doctoruuid}",
 		PatientGetByDoctor,
 	},
 	Route{
