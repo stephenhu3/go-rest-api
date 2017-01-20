@@ -43,21 +43,26 @@ HTTP 201 Created
 }
 ```
 -------------------------------------------------------
-GET /patients/search?patientuuid=:patientuuid
+GET /patients/patientuuid/{patientuuid}
 
 **Retrieves a patient record**
 
 Response:
 
-HTTP 302 Found
+HTTP 200 OK
 
 ```json
 {
   "patientUUID": "ce3aa844-25cf-4794-9486-83fec2358138",
-  "age": 69,
+  "address": "address",
+  "bloodType": "B",
+  "dateOfBirth": "dob",
+  "emergencyContact": "emergencyContact",
   "gender": "F",
-  "insuranceNumber": "Kelly",
-  "name": "1234567890"
+  "medicalNumber": "medicalNumber",
+  "name": "Kelly",
+  "notes": "notes",
+  "phoneNumber": "1234567890"
 }
 ```
 -------------------------------------------------------
@@ -157,35 +162,28 @@ HTTP 302 Found
 }
 ```
 -------------------------------------------------------
-GET /patients/bydoctor?doctoruuid=:doctoruuid
+
+GET /patients/doctoruuid/{doctoruuid}
 
 **Retrieves a list of patients under a doctor with basic info **
 
 Response:
 
-HTTP 200 OK
+HTTP 200
 
 ```json
 [
 	{
-		"patientUuid": "e0736160-82b1-4def-b40b-95f899732024",
-		"name": "Kelly",
-		"age":"27",
-		"gender": "Female",
-		"medicalNumber": "1234567890",
-		"dateOfBirth": "ISOString",
-		"dateOfDeath": "ISOString",
-		"ethnicity": "Asian",
-		"address": "",
-		"phoneNumber": "778-390-4482",
-		"notes": "ISOString",
-		"emergencyContact": {
-			"name": "Rick",
-			"phoneNumber":"705-190-4482",
-			"address": "",
-			"relationship": "Brother"
-		}
-		
+	  "patientUUID": "ce3aa844-25cf-4794-9486-83fec2358138",
+	  "address": "address",
+	  "bloodType": "B",
+	  "dateOfBirth": "dob",
+	  "emergencyContact": "emergencyContact",
+	  "gender": "F",
+	  "medicalNumber": "medicalNumber",
+	  "name": "Kelly",
+	  "notes": "notes",
+	  "phoneNumber": "1234567890"
 	},
 	...
 ]

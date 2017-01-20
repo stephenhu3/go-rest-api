@@ -292,6 +292,72 @@ func PatientGetByDoctor(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
+Returns a list of patients seen by a specific doctor
+Method: GET
+Endpoint: //patients/searchList?doctoruuid=:doctoruuid
+*/
+func PatientGetList(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	err := r.ParseForm()
+    if err != nil {
+       panic(err)
+    }
+    var searchUUID = r.Form["doctoruuid"][0]
+
+	var notes string
+	var patientUUID gocql.UUID
+
+
+	// Get all patients that this doctor has seen before
+	iter := session.Query("SELECT patientUUID, notes FROM futureappointments WHERE doctoruuid = ?",
+		searchUUID).Consistency(gocql.One).Iter();
+
+	// Iterate through returned rows and scan rows 
+	// Return unique patients with Unmarshaled JSON string (in Notes) for basic patient info
+	m := make(map[gocql.UUID] PatientListEntry)
+	for iter.Scan( &patientUUID, &notes){
+		if _, found := m[patientUUID]; !found{
+			details := PatientDetails{}
+			if marshalErr := json.Unmarshal([]byte(notes), &details); marshalErr != nil{
+				log.Println("Patient details malformed at patientuuid", patientUUID)
+				continue
+			}
+			m[patientUUID] = PatientListEntry{ PatientUUID:patientUUID, Details: details }
+		}
+	}
+
+	// Error in iteration returned upon iter.Close()
+	if err := iter.Close(); err !=nil {
+		log.Printf("PatientList not found")
+		log.Println(err)
+		return
+	}
+
+	// Patients found
+	if len(m) > 0 {
+		log.Printf("Patients found")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		i := 0
+		patientList := make([]PatientListEntry, len(m))
+		for _, v := range m {
+			patientList[i] = v
+			i++
+		}
+		if err := json.NewEncoder(w).Encode(patientList); err != nil {
+			panic(err)
+		}
+	}
+}
+
+/*
 Create a future appointment
 Method: POST
 Endpoint: /futureappointment
