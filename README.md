@@ -25,10 +25,15 @@ Request:
 
 ```json
 {
-	"age": 69,
-	"gender": "F",
-	"name": "Kelly",
-	"insuranceNumber": "1234567890"
+  "address": "5698 Cedar Avenue, San Francisco, California",
+  "bloodType": "B-Positive",
+  "dateOfBirth": 191289600,
+  "emergencyContact": "415-555-8271",
+  "gender": "F",
+  "medicalNumber": "1234567890",
+  "name": "Kelly Lai",
+  "notes": "Accompanied by guide dog, ensure patient's area is wheelchair-friendly",
+  "phoneNumber": "483-555-5123"
 }
 ```
 
@@ -49,20 +54,19 @@ GET /patients/patientuuid/{patientuuid}
 
 Response:
 
-HTTP 200 OK
+HTTP 302 Found
 
 ```json
 {
-  "patientUUID": "ce3aa844-25cf-4794-9486-83fec2358138",
-  "address": "address",
-  "bloodType": "B",
-  "dateOfBirth": "dob",
-  "emergencyContact": "emergencyContact",
+  "address": "5698 Cedar Avenue, San Francisco, California",
+  "bloodType": "B-Positive",
+  "dateOfBirth": 191289600,
+  "emergencyContact": "415-555-8271",
   "gender": "F",
-  "medicalNumber": "medicalNumber",
-  "name": "Kelly",
-  "notes": "notes",
-  "phoneNumber": "1234567890"
+  "medicalNumber": "1234567890",
+  "name": "Kelly Lai",
+  "notes": "Accompanied by guide dog, ensure patient's area is wheelchair-friendly",
+  "phoneNumber": "483-555-5123"
 }
 ```
 -------------------------------------------------------

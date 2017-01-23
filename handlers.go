@@ -139,8 +139,9 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 	notes := p.Notes
 	phone := p.Phone
 
-	log.Printf("Created new patient: %s\t%d\t%s\t%s\t%s",
-		patientUUID, gender, medicalNumber, name)
+	log.Printf("Created new patient: %s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t",
+		patientUUID, address, bloodType, dateOfBirth, emergencyContact, gender,
+		medicalNumber, name, notes, phone)
 
 	// insert new patient entry
 	if err := session.Query(`INSERT INTO patients (patientUuid, 
