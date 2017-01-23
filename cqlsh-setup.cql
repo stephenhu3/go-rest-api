@@ -8,18 +8,16 @@ USE emr;
 
 CREATE TABLE patients (
 	patientUUID uuid,
-	age int,
-	dateOfBirth date,
-	dateOfDeath date,
+	dateOfBirth int,
 	gender text,
 	name text,
 	medicalNumber text,
-	ethnicity text,
+	bloodType text,
 	emergencyContact text,
-	phoneNumber text,
+	phone text,
 	address text,
-	notes: text,
-	PRIMARY KEY (patientUUID, ethnicity)
+	notes text,
+	PRIMARY KEY (patientUUID)
 );
 
 

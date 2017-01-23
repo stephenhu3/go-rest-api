@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-
+	"strings"
 	"github.com/gocql/gocql"
 	"github.com/gorilla/mux"
 )
@@ -128,17 +128,28 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	age := p.Age
+
+	address := p.Address
+	bloodType := p.BloodType
+	dateOfBirth := p.DateOfBirth
+	emergencyContact := p.EmergencyContact
 	gender := p.Gender
-	insuranceNumber := p.InsuranceNumber
+	medicalNumber := p.MedicalNumber
 	name := p.Name
-	log.Printf("Created new patient: %s\t%d\t%s\t%s\t%s",
-		patientUUID, age, gender, insuranceNumber, name)
+	notes := p.Notes
+	phone := p.Phone
+
+	log.Printf("Created new patient: %s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t",
+		patientUUID, address, bloodType, dateOfBirth, emergencyContact, gender,
+		medicalNumber, name, notes, phone)
 
 	// insert new patient entry
-	if err := session.Query(`INSERT INTO patients (patientUuid, age, gender,
-		name, insuranceNumber) VALUES (?, ?, ?, ?, ?)`,
-		patientUUID, age, gender, insuranceNumber, name).Exec(); err != nil {
+	if err := session.Query(`INSERT INTO patients (patientUuid, 
+		address, bloodType, dateOfBirth, emergencyContact, gender, 
+		medicalNumber, name, notes, phone ) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		patientUUID, address, bloodType, dateOfBirth, emergencyContact, 
+		gender, medicalNumber, name, notes, phone, ).Exec(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -162,22 +173,28 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	err := r.ParseForm()
-	if err != nil {
-		panic(err)
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
 	}
-	var searchUUID = r.Form["patientuuid"][0]
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
 
 	var patientUUID gocql.UUID
-	var age int
+	var address string
+	var bloodType string
+	var dateOfBirth int
+	var emergencyContact string
 	var gender string
-	var insuranceNumber string
+	var medicalNumber string
 	var name string
+	var notes string
+	var phone string
 
 	// get the patient entry
 	if err := session.Query("SELECT * FROM patients WHERE patientUUID = ?",
-		searchUUID).Consistency(gocql.One).Scan(&patientUUID, &age, &gender,
-		&insuranceNumber, &name); err != nil {
+		searchUUID).Consistency(gocql.One).Scan( &patientUUID, &address, 
+		&bloodType, &dateOfBirth, &emergencyContact, &gender, &medicalNumber, 
+		&name, &notes, &phone); err != nil {
 		// patient was not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusNotFound)
@@ -193,9 +210,11 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusFound)
-		if err := json.NewEncoder(w).Encode(Patient{PatientUUID: patientUUID,
-			Age: age, Gender: gender, InsuranceNumber: insuranceNumber,
-			Name: name}); err != nil {
+		if err := json.NewEncoder(w).Encode(Patient{PatientUUID: patientUUID, 
+			Address: address, BloodType: bloodType, DateOfBirth: dateOfBirth, 
+			EmergencyContact: emergencyContact, Gender: gender, 
+			MedicalNumber: medicalNumber, Name: name, Notes: notes, 
+			Phone: phone}); err != nil {
 			panic(err)
 		}
 	}
@@ -204,7 +223,7 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 /*
 Returns a list of patients seen by a specific doctor
 Method: GET
-Endpoint: //patients/search?doctoruuid=:doctoruuid
+Endpoint: //patients/doctoruuid/{doctoruuid}
 */
 func PatientGetByDoctor(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
@@ -214,11 +233,11 @@ func PatientGetByDoctor(w http.ResponseWriter, r *http.Request) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	err := r.ParseForm()
-    if err != nil {
-       panic(err)
-    }
-    var searchUUID = r.Form["doctoruuid"][0]
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
+	}
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
 
 	var notes string
 	var patientUUID gocql.UUID
@@ -248,7 +267,7 @@ func PatientGetByDoctor(w http.ResponseWriter, r *http.Request) {
 	if err := iter.Close(); err !=nil || len(m) == 0 {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,Message: "Not Found"})
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound, Message: "Not Found"})
 		log.Printf("PatientLists not found")
 		log.Println(err)
 		return
