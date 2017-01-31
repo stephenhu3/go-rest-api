@@ -1,3 +1,5 @@
+DROP KEYSPACE IF EXISTS emr;
+
 CREATE KEYSPACE IF NOT EXISTS emr
 	WITH replication = {
 	  'class': 'SimpleStrategy',
