@@ -169,11 +169,11 @@ HTTP 302 Found
 
 GET /patients/doctoruuid/{doctoruuid}
 
-**Retrieves a list of patients under a doctor with basic info **
+**Retrieves a list of patients under a doctor with basic info**
 
 Response:
 
-HTTP 200
+HTTP 302 Found
 
 ```json
 [
@@ -185,13 +185,73 @@ HTTP 200
 	  "emergencyContact": "emergencyContact",
 	  "gender": "F",
 	  "medicalNumber": "medicalNumber",
-	  "name": "Kelly",
+	  "name": "Kelly Lai",
 	  "notes": "notes",
 	  "phoneNumber": "1234567890"
 	},
-	...
+  {
+    "patientUUID": "e572fe98-4662-47f7-930c-cf4f7d13e26e",
+    "address": "address",
+    "bloodType": "B",
+    "dateOfBirth": "dob",
+    "emergencyContact": "emergencyContact",
+    "gender": "M",
+    "medicalNumber": "medicalNumber",
+    "name": "Lamar Odom",
+    "notes": "notes",
+    "phoneNumber": "1234567890"
+  }
 ]
 }
 ```
 
 -------------------------------------------------------
+
+GET /appointments/doctoruuid/{doctoruuid}
+
+**Retrieves a list of scheduled and completed appointments under a doctor**
+
+Response:
+
+HTTP 302 Found
+
+```json
+[
+  {
+    "appointmentUUID": "30c40285-bbf5-4a09-b849-b9aa4c0f9f97",
+    "patientUUID": "e572fe98-4662-47f7-930c-cf4f7d13e26e",
+    "doctorUUID": "57c7aea1-9fea-422d-ae35-dbf8ce5f5dda",
+    "patientName": "Lamar Odom",
+    "dateScheduled": 1479463552,
+    "dateVisited": 0,
+    "notes": "do something"
+  },
+  {
+    "appointmentUUID": "13c57da1-6f13-4898-b42b-de4252131337",
+    "patientUUID": "6c202b83-1759-40e2-b1c8-7566330366d2",
+    "doctorUUID": "57c7aea1-9fea-422d-ae35-dbf8ce5f5dda",
+    "patientName": "Kelly Lai",
+    "dateScheduled": 1479463552,
+    "dateVisited": 0,
+    "notes": "do blood test"
+  },
+  {
+    "appointmentUUID": "987b09ee-543b-4dbe-99da-fd9c99202eee",
+    "patientUUID": "6e894f6b-cbf6-4703-ad4f-bd93126450cb",
+    "doctorUUID": "57c7aea1-9fea-422d-ae35-dbf8ce5f5dda",
+    "patientName": "Joey Kapow",
+    "dateScheduled": 1479463552,
+    "dateVisited": 0,
+    "notes": "check blood pressure"
+  },
+  {
+    "appointmentUUID": "8bbd9f18-829b-4011-a451-df571b369796",
+    "patientUUID": "e572fe98-4662-47f7-930c-cf4f7d13e26e",
+    "doctorUUID": "57c7aea1-9fea-422d-ae35-dbf8ce5f5dda",
+    "patientName": "Lamar Odom",
+    "dateScheduled": 0,
+    "dateVisited": 1479463552,
+    "notes": "had difficulty breathing"
+  }
+]
+```
