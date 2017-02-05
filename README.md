@@ -169,7 +169,7 @@ HTTP 302 Found
 
 GET /patients/doctoruuid/{doctoruuid}
 
-**Retrieves a list of patients under a doctor with basic info**
+**Retrieves a list of patients and their basic info that have been treated by, or is scheduled with the doctor**
 
 Response:
 
@@ -177,32 +177,28 @@ HTTP 302 Found
 
 ```json
 [
-	{
-	  "patientUUID": "ce3aa844-25cf-4794-9486-83fec2358138",
-	  "address": "address",
-	  "bloodType": "B",
-	  "dateOfBirth": "dob",
-	  "emergencyContact": "emergencyContact",
-	  "gender": "F",
-	  "medicalNumber": "medicalNumber",
-	  "name": "Kelly Lai",
-	  "notes": "notes",
-	  "phoneNumber": "1234567890"
-	},
   {
     "patientUUID": "e572fe98-4662-47f7-930c-cf4f7d13e26e",
-    "address": "address",
-    "bloodType": "B",
-    "dateOfBirth": "dob",
-    "emergencyContact": "emergencyContact",
+    "dateOfBirth": 191289600,
     "gender": "M",
-    "medicalNumber": "medicalNumber",
     "name": "Lamar Odom",
-    "notes": "notes",
-    "phoneNumber": "1234567890"
+    "phoneNumber": "483-555-5123"
+  },
+  {
+    "patientUUID": "6c202b83-1759-40e2-b1c8-7566330366d2",
+    "dateOfBirth": 191289600,
+    "gender": "F",
+    "name": "Kelly Lai",
+    "phoneNumber": "483-555-5123"
+  },
+  {
+    "patientUUID": "6e894f6b-cbf6-4703-ad4f-bd93126450cb",
+    "dateOfBirth": 191289600,
+    "gender": "M",
+    "name": "Joey Kapow",
+    "phoneNumber": "483-555-5123"
   }
 ]
-}
 ```
 
 -------------------------------------------------------
