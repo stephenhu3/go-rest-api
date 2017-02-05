@@ -270,55 +270,66 @@ func PatientGetByDoctor(w http.ResponseWriter, r *http.Request) {
 
 	var searchUUID = strings.Split(r.RequestURI, "/")[3]
 
-	var notes string
-	var patientUUID gocql.UUID
-
-	// Get all patients that this doctor has seen before
-	iter := session.Query("SELECT patientUUID, notes FROM completedAppointments WHERE doctoruuid = ?",
+	// Get all future appointments by doctor
+	iter := session.Query("SELECT * FROM futureappointments WHERE doctoruuid = ?",
 		searchUUID).Consistency(gocql.One).Iter()
 
-	// Iterate through returned rows and scan rows
-	// Return unique patients with Unmarshaled JSON string (in Notes) for basic patient info
-	m := make(map[gocql.UUID]Patient)
-	for iter.Scan(&patientUUID, &notes) {
-		if _, found := m[patientUUID]; !found {
-			currentPatient := Patient{}
-			if marshalErr := json.Unmarshal([]byte(notes), &currentPatient); marshalErr != nil {
-				log.Println("Patient details malformed at patientuuid", patientUUID)
-				continue
-			}
-			currentPatient.PatientUUID = patientUUID
-			m[patientUUID] = currentPatient
-		}
-	}
+	// Get all completed appointments by doctor
+	completedIter := session.Query("SELECT * FROM completedappointments WHERE doctoruuid = ?",
+		searchUUID).Consistency(gocql.One).Iter()
 
-	// Error in iteration returned upon iter.Close()
-	// Or no Patients found
-	if err := iter.Close(); err != nil || len(m) == 0 {
+	// no appointments found, thus no patients
+	if iter.NumRows() == 0 && completedIter.NumRows() == 0 {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound, Message: "Not Found"})
-		log.Printf("PatientLists not found")
-		log.Println(err)
+		log.Printf("Patients by doctor not found")
 		return
 	}
 
-	// Patients found
-	if len(m) > 0 {
-		log.Printf("Patients found")
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusFound)
+	// make a set of patientUUIDs
+	m := make(map[gocql.UUID]gocql.UUID)
+	var patientUUID gocql.UUID
 
-		i := 0
-		patientList := make([]Patient, len(m))
-		for _, v := range m {
-			patientList[i] = v
-			i++
+	// scheduled appointment(s) found
+	if iter.NumRows() > 0 {
+		log.Printf("Scheduled appointments found")
+		for iter.Scan(nil, nil, nil, nil, &patientUUID) {
+			m[patientUUID] = patientUUID
 		}
-		if err := json.NewEncoder(w).Encode(patientList); err != nil {
-			panic(err)
+	}
+
+	// completed appointment(s) found
+	if completedIter.NumRows() > 0 {
+		log.Printf("Completed appointments found")
+		for completedIter.Scan(nil, nil, nil, nil, nil, nil, nil, nil, &patientUUID) {
+			m[patientUUID] = patientUUID
 		}
+	}
+
+	var patientList []Patient
+	var dateOfBirth int
+	var gender string
+	var name string
+	var phone string
+
+	// get each patient's info and add to list
+	for k := range m {
+		if err := session.Query("SELECT * FROM patients WHERE patientUUID = ?",
+			k).Consistency(gocql.One).Scan(&patientUUID, nil,
+			nil, &dateOfBirth, nil, &gender, nil, &name, nil, &phone); err != nil {
+			log.Printf("Patient does not exist, skipping")
+		} else {
+			patientList = append(patientList, Patient{PatientUUID: patientUUID,
+				DateOfBirth: dateOfBirth, Gender: gender, Name: name, Phone: phone})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusFound)
+	if err := json.NewEncoder(w).Encode(patientList); err != nil {
+		panic(err)
 	}
 }
 
