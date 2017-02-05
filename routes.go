@@ -19,32 +19,6 @@ var routes = Routes{
 		Index,
 	},
 	Route{
-		"Authenticate",
-		"POST",
-		"/login",
-		Authenticate,
-	},
-	// Todo sample routes
-	Route{
-		"TodoIndex",
-		"GET",
-		"/todos",
-		TodoIndex,
-	},
-	Route{
-		"TodoCreate",
-		"POST",
-		"/todos",
-		TodoCreate,
-	},
-	Route{
-		"TodoShow",
-		"GET",
-		"/todos/{todoId}",
-		TodoShow,
-	},
-	// End todo samples
-	Route{
 		"PatientCreate",
 		"POST",
 		"/patients",
@@ -85,5 +59,11 @@ var routes = Routes{
 		"GET",
 		"/completedappointments/search",
 		CompletedAppointmentGet,
+	},
+	Route{
+		"AppointmentGetByDoctor",
+		"GET",
+		"/appointments/doctoruuid/{doctoruuid}",
+		AppointmentGetByDoctor,
 	},
 }
