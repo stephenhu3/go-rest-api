@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"github.com/gocql/gocql"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -146,28 +147,9 @@ func TestPatientGetHandler(t *testing.T) {
 	}
 }
 
-func TestPatientGetByDoctorHandler1(t *testing.T) {
-	endpoint := "/patients/doctoruuid/test-uuid-should-fail"
-	req, err := http.NewRequest("GET", endpoint, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Manually set the endpoint in the request URI since the
-	// function isn't setting it on its own.
-	req.RequestURI = endpoint
-
-	rec := httptest.NewRecorder()
-	handler := http.HandlerFunc(PatientGetByDoctor)
-	handler.ServeHTTP(rec, req)
-
-	status := rec.Code
-	if status != http.StatusNotFound {
-		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusNotFound)
-	}
-}
-
 func TestFutureAppointmentCreate(t *testing.T) {
+	var patientUUID gocql.UUID
+	var entry string
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
@@ -179,12 +161,22 @@ func TestFutureAppointmentCreate(t *testing.T) {
 	// Get current count of appointments
 	numAppointments := session.Query("SELECT * FROM futureAppointments").Iter().NumRows()
 
+	patientErr := session.Query("SELECT * FROM patients").Consistency(gocql.One).Scan(&patientUUID,
+		nil, nil, nil, nil, nil, nil, nil, nil, nil)
+
+	if patientErr != nil {
+		t.Fatal(patientErr)
+	}
+	var bb bytes.Buffer
+	log.Printf("Patient was found")
+	bb.WriteString(`{"patientUUID":"`)
+	bb.WriteString(patientUUID.String())
+	bb.WriteString(`","doctorUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
+          "dateScheduled":1000, "notes": "Test notes"}`)
+	entry = bb.String()
+
 	// Make the reader using this json string
-	jsonStringReader := strings.NewReader((`{"patientUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
-                                          "doctorUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
-                                          "dateScheduled":1000,
-                                          "notes": "Test notes"
-                                          }`))
+	jsonStringReader := strings.NewReader(entry)
 
 	endpoint := "/futureappointments"
 	req, err := http.NewRequest("POST", endpoint, jsonStringReader)
@@ -264,9 +256,9 @@ func TestCompletedAppointmentCreate(t *testing.T) {
 	numAppointments := session.Query("SELECT * FROM completedAppointments").Iter().NumRows()
 
 	// Make the reader using this json string
-	jsonStringReader := strings.NewReader((`{"patientUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
+	jsonStringReader := strings.NewReader((`{"patientUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb925",
                                           "doctorUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
-                                          "dateVisited":1000,
+                                          "dateVisited":1099,
                                           "breathingRate":10,
                                           "heartRate":80,
                                           "bloodOxygenLevel":56,
@@ -340,6 +332,71 @@ func TestCompletedAppointmentGet(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	handler := http.HandlerFunc(CompletedAppointmentGet)
+	handler.ServeHTTP(rec, req)
+
+	status := rec.Code
+	if status != http.StatusFound {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
+	}
+}
+
+func TestPatientGetByDoctorHandler1(t *testing.T) {
+	endpoint := "/patients/doctoruuid/test-uuid-should-fail"
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Manually set the endpoint in the request URI since the
+	// function isn't setting it on its own.
+	req.RequestURI = endpoint
+
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(PatientGetByDoctor)
+	handler.ServeHTTP(rec, req)
+
+	status := rec.Code
+	if status != http.StatusNotFound {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusNotFound)
+	}
+}
+
+func TestPatientGetByDoctorHandler(t *testing.T) {
+	endpoint := "/patients/doctoruuid/1cf1dca9-4a4a-4f47-8201-401bbe0fb927"
+	// The doctorUUID is the same as the UUID used for doctors in the test above.
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Manually set the endpoint in the request URI since the
+	// function isn't setting it on its own.
+	req.RequestURI = endpoint
+
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(PatientGetByDoctor)
+	handler.ServeHTTP(rec, req)
+
+	status := rec.Code
+	if status != http.StatusFound {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
+	}
+}
+
+func TestAppointmentGetByDoctorHandler(t *testing.T) {
+	endpoint := "/appointments/doctoruuid/1cf1dca9-4a4a-4f47-8201-401bbe0fb927"
+	// The doctorUUID is the same as the UUID used for doctors in the test above.
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Manually set the endpoint in the request URI since the
+	// function isn't setting it on its own.
+	req.RequestURI = endpoint
+
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(AppointmentGetByDoctor)
 	handler.ServeHTTP(rec, req)
 
 	status := rec.Code
