@@ -21,7 +21,7 @@ const CASSDB = "127.0.0.1"
 func Authenticate(w http.ResponseWriter, r *http.Request) {
 	log.Println("OK")
 	w.Header().Set("Set-Cookie", "userToken=test; Path=/; HttpOnly")
-	w.Header().Set("Access-Control-Allow-Origin", UIAddr)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.WriteHeader(http.StatusOK)
 	r.ParseForm()
@@ -538,6 +538,115 @@ func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
 			PatientUUID: patientUUID, DoctorUUID: doctorUUID, DateVisited: dateVisited,
 			BreathingRate: breathingRate, HeartRate: heartRate, BloodOxygenLevel: bloodOxygenLevel,
 			BloodPressure: bloodPressure, Notes: notes}); err != nil {
+			panic(err)
+		}
+	}
+}
+
+
+
+/*
+Create a Doctor entry
+Method: POST
+Endpoint: /doctors
+*/
+func DoctorCreate(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	var d Doctor
+	err := decoder.Decode(&d)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	// generate new randomly generated UUID (version 4)
+	doctorUUID, err := gocql.RandomUUID()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	name := d.Name
+	phoneNumber := d.Phone
+	prFacility := d.PrimaryFacility
+	prSpecialty := d.PrimarySpecialty
+	gender := d.Gender
+
+	log.Printf("Created new doctor: %s\t%s\t%s\t%s\t%s\t%s\t",
+		doctorUUID, name, phoneNumber, prFacility, prSpecialty, gender)
+
+	// insert new patient entry
+	if err := session.Query(`INSERT INTO doctors (doctorUUID,
+		name, phone, primaryFacility, primarySpecialty,
+		gender) VALUES (?, ?, ?, ?, ?, ?)`,
+		doctorUUID, name, phoneNumber, prFacility, prSpecialty,
+		gender).Exec(); err != nil {
+		log.Fatal(err)
+	}
+
+	// send success response
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
+		Message: "Doctor entry successfully created."})
+}
+
+/*
+Search for a doctor's info
+Method: GET
+Endpoint: /doctors/search/{doctoruuid}
+*/
+func DoctorGet(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
+	}
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
+
+	var doctorUUID gocql.UUID
+	var name string
+	var phoneNumber string
+	var primaryFacility string
+	var primarySpecialty string
+	var gender string
+
+	// get the doctor entry
+	if err := session.Query("SELECT * FROM doctors WHERE doctorUUID = ?",
+		searchUUID).Consistency(gocql.One).Scan(&doctorUUID, &gender,
+		&name, &phoneNumber, &primaryFacility, &primarySpecialty);
+		err != nil {
+		// doctor was not found
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+			Message: "Not Found"})
+		log.Printf("No Doctor found")
+		return
+	}
+
+	// else, doctor was found
+	if len(doctorUUID) > 0 {
+		log.Printf("Doctor was found")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(Doctor{DoctorUUID: doctorUUID,
+			Name: name, Phone: phoneNumber, PrimaryFacility: primaryFacility,
+			PrimarySpecialty: primarySpecialty, Gender: gender});
+			err != nil {
 			panic(err)
 		}
 	}

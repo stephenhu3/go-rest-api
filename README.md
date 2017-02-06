@@ -251,3 +251,53 @@ HTTP 302 Found
   }
 ]
 ```
+
+-------------------------------------------------------
+
+GET /doctor/doctoruuid/{doctoruuid}
+
+**Retrieves a doctor profile**
+
+Response:
+
+HTTP 200 Found
+
+```json
+{
+  "doctorUUID": "556d9f18-829b-4011-a451-df571b369111",
+  "name": "Anoosh Gilliam",
+  "phoneNumber": "555-222-1111",
+  "primaryFacility": "address",
+  "primarySpeciality": "Liver",
+  "gender": "Female"
+}
+```
+-------------------------------------------------------
+
+POST /doctors
+
+**Create a new doctor profile**
+
+Request:
+
+```json
+{
+  "name": "Doctor Name",
+  "phoneNumber": "111-333-2222",
+  "primaryFacility": "address",
+  "primarySpeciality": "Specialty",
+  "gender": "Male"
+}
+```
+
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "code": 201,
+  "message": "Doctor entry successfully created."
+}
+```
+-------------------------------------------------------
