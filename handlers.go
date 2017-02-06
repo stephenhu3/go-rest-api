@@ -581,7 +581,7 @@ func DoctorCreate(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Created new doctor: %s\t%s\t%s\t%s\t%s\t%s\t",
 		doctorUUID, name, phoneNumber, prFacility, prSpecialty, gender)
 
-	// insert new patient entry
+	// insert new doctor entry
 	if err := session.Query(`INSERT INTO doctors (doctorUUID,
 		name, phone, primaryFacility, primarySpecialty,
 		gender) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -600,7 +600,7 @@ func DoctorCreate(w http.ResponseWriter, r *http.Request) {
 /*
 Search for a doctor's info
 Method: GET
-Endpoint: /doctors/search/{doctoruuid}
+Endpoint: /doctors/doctoruuid/{doctoruuid}
 */
 func DoctorGet(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
