@@ -166,9 +166,12 @@ func TestFutureAppointmentCreate(t *testing.T) {
 
 	if patientErr != nil {
 		t.Fatal(patientErr)
+		log.Printf("Patient was not found")
+	} else {
+		log.Printf("Patient was found. UUID = %s", patientUUID.String())
 	}
+
 	var bb bytes.Buffer
-	log.Printf("Patient was found")
 	bb.WriteString(`{"patientUUID":"`)
 	bb.WriteString(patientUUID.String())
 	bb.WriteString(`","doctorUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
@@ -255,16 +258,34 @@ func TestCompletedAppointmentCreate(t *testing.T) {
 	// Get current count of appointments
 	numAppointments := session.Query("SELECT * FROM completedAppointments").Iter().NumRows()
 
+	var patientUUID gocql.UUID
+
+	// Get an actual patientUUID to add. It will be used in GetPatientByDoctor
+	patientErr := session.Query("SELECT * FROM patients").Consistency(gocql.One).Scan(&patientUUID,
+		nil, nil, nil, nil, nil, nil, nil, nil, nil)
+
+	if patientErr != nil {
+		t.Fatal(patientErr)
+		log.Printf("Patient was not found")
+	} else {
+		log.Printf("Patient was found. UUID = %s", patientUUID.String())
+	}
+	var bb bytes.Buffer
+	bb.WriteString(`{"patientUUID":"`)
+	bb.WriteString(patientUUID.String())
+	bb.WriteString(`","doctorUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
+									"dateVisited":1099,
+									"breathingRate":10,
+									"heartRate":80,
+									"bloodOxygenLevel":56,
+									"bloodPressure":129,
+									"notes": "Test notes"
+									}`)
+
+	entry := bb.String()
+
 	// Make the reader using this json string
-	jsonStringReader := strings.NewReader((`{"patientUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb925",
-                                          "doctorUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
-                                          "dateVisited":1099,
-                                          "breathingRate":10,
-                                          "heartRate":80,
-                                          "bloodOxygenLevel":56,
-                                          "bloodPressure":129,
-                                          "notes": "Test notes"
-                                          }`))
+	jsonStringReader := strings.NewReader(entry)
 
 	endpoint := "/completedappointments"
 	req, err := http.NewRequest("POST", endpoint, jsonStringReader)
@@ -361,28 +382,6 @@ func TestPatientGetByDoctorHandler1(t *testing.T) {
 	}
 }
 
-func TestPatientGetByDoctorHandler(t *testing.T) {
-	endpoint := "/patients/doctoruuid/1cf1dca9-4a4a-4f47-8201-401bbe0fb927"
-	// The doctorUUID is the same as the UUID used for doctors in the test above.
-	req, err := http.NewRequest("GET", endpoint, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Manually set the endpoint in the request URI since the
-	// function isn't setting it on its own.
-	req.RequestURI = endpoint
-
-	rec := httptest.NewRecorder()
-	handler := http.HandlerFunc(PatientGetByDoctor)
-	handler.ServeHTTP(rec, req)
-
-	status := rec.Code
-	if status != http.StatusFound {
-		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
-	}
-}
-
 func TestAppointmentGetByDoctorHandler(t *testing.T) {
 	endpoint := "/appointments/doctoruuid/1cf1dca9-4a4a-4f47-8201-401bbe0fb927"
 	// The doctorUUID is the same as the UUID used for doctors in the test above.
@@ -397,6 +396,28 @@ func TestAppointmentGetByDoctorHandler(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	handler := http.HandlerFunc(AppointmentGetByDoctor)
+	handler.ServeHTTP(rec, req)
+
+	status := rec.Code
+	if status != http.StatusFound {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
+	}
+}
+
+func TestPatientGetByDoctorHandler(t *testing.T) {
+	endpoint := "/patients/doctoruuid/1cf1dca9-4a4a-4f47-8201-401bbe0fb927"
+	// The doctorUUID is the same as the UUID used for doctors in the test above.
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Manually set the endpoint in the request URI since the
+	// function isn't setting it on its own.
+	req.RequestURI = endpoint
+
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(PatientGetByDoctor)
 	handler.ServeHTTP(rec, req)
 
 	status := rec.Code
