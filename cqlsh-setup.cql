@@ -51,3 +51,14 @@ CREATE TABLE futureAppointments (
 CREATE INDEX futureAppointmentPatientUUID ON emr.futureAppointments (patientUUID);
 CREATE INDEX futureAppointmentDoctorUUID ON emr.futureAppointments (doctorUUID);
 CREATE INDEX futureAppointmentDateScheduled ON emr.futureAppointments (dateScheduled);
+
+
+CREATE TABLE doctors (
+	doctorUUID uuid,
+	name text,
+	phone text,
+	primaryFacility text,
+	primarySpecialty text,
+	gender text,
+	PRIMARY KEY (doctorUUID)
+);

@@ -19,6 +19,12 @@ var routes = Routes{
 		Index,
 	},
 	Route{
+		"Authenticate",
+		"POST",
+		"/login",
+		Authenticate,
+	},
+	Route{
 		"PatientCreate",
 		"POST",
 		"/patients",
@@ -65,5 +71,17 @@ var routes = Routes{
 		"GET",
 		"/appointments/doctoruuid/{doctoruuid}",
 		AppointmentGetByDoctor,
+	},
+	Route{
+		"DoctorCreate",
+		"POST",
+		"/doctors",
+		DoctorCreate,
+	},
+	Route{
+		"DoctorGet",
+		"GET",
+		"/doctors/doctoruuid/{doctoruuid}",
+		DoctorGet,
 	},
 }
