@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"github.com/gocql/gocql"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -147,7 +146,7 @@ func TestPatientGetHandler(t *testing.T) {
 	}
 }
 
-func TestFutureAppointmentCreate(t *testing.T) {
+func TestFutureAppointmentCreateHandler(t *testing.T) {
 	var patientUUID gocql.UUID
 	var entry string
 	// Connect to the database first.
@@ -166,9 +165,6 @@ func TestFutureAppointmentCreate(t *testing.T) {
 
 	if patientErr != nil {
 		t.Fatal(patientErr)
-		log.Printf("Patient was not found")
-	} else {
-		log.Printf("Patient was found. UUID = %s", patientUUID.String())
 	}
 
 	var bb bytes.Buffer
@@ -204,7 +200,7 @@ func TestFutureAppointmentCreate(t *testing.T) {
 	}
 }
 
-func TestFutureAppointmentGet(t *testing.T) {
+func TestFutureAppointmentGetHandler(t *testing.T) {
 	// Variables for Appointments
 	var appointmentUUID gocql.UUID
 	var patientUUID gocql.UUID
@@ -219,8 +215,8 @@ func TestFutureAppointmentGet(t *testing.T) {
 	defer session.Close()
 
 	// Get the values from the first appointment found
-	session.Query("SELECT * FROM futureAppointments").Consistency(gocql.One).Scan(
-		&appointmentUUID, &patientUUID, &doctorUUID, &dateScheduled, &notes)
+	session.Query("SELECT * FROM futureappointments").Consistency(gocql.One).Scan(
+		&appointmentUUID, &dateScheduled, &doctorUUID, &notes, &patientUUID)
 
 	var buff bytes.Buffer
 	buff.WriteString("/futureappointments/search/?appointmentuuid=")
@@ -244,9 +240,15 @@ func TestFutureAppointmentGet(t *testing.T) {
 	if status != http.StatusFound {
 		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
 	}
+
+	// Check the body for patientUUID
+	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct patientUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
+	}
+
 }
 
-func TestCompletedAppointmentCreate(t *testing.T) {
+func TestCompletedAppointmentCreateHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
@@ -260,15 +262,12 @@ func TestCompletedAppointmentCreate(t *testing.T) {
 
 	var patientUUID gocql.UUID
 
-	// Get an actual patientUUID to add. It will be used in GetPatientByDoctor
+	//
 	patientErr := session.Query("SELECT * FROM patients").Consistency(gocql.One).Scan(&patientUUID,
 		nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	if patientErr != nil {
 		t.Fatal(patientErr)
-		log.Printf("Patient was not found")
-	} else {
-		log.Printf("Patient was found. UUID = %s", patientUUID.String())
 	}
 	var bb bytes.Buffer
 	bb.WriteString(`{"patientUUID":"`)
@@ -310,7 +309,7 @@ func TestCompletedAppointmentCreate(t *testing.T) {
 	}
 }
 
-func TestCompletedAppointmentGet(t *testing.T) {
+func TestCompletedAppointmentGetHandler(t *testing.T) {
 	// Variables for Appointments
 	var appointmentUUID gocql.UUID
 	var patientUUID gocql.UUID
@@ -359,26 +358,10 @@ func TestCompletedAppointmentGet(t *testing.T) {
 	if status != http.StatusFound {
 		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
 	}
-}
 
-func TestPatientGetByDoctorHandler1(t *testing.T) {
-	endpoint := "/patients/doctoruuid/test-uuid-should-fail"
-	req, err := http.NewRequest("GET", endpoint, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Manually set the endpoint in the request URI since the
-	// function isn't setting it on its own.
-	req.RequestURI = endpoint
-
-	rec := httptest.NewRecorder()
-	handler := http.HandlerFunc(PatientGetByDoctor)
-	handler.ServeHTTP(rec, req)
-
-	status := rec.Code
-	if status != http.StatusNotFound {
-		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusNotFound)
+	// check the body of the returned message
+	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct patientUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
 	}
 }
 
@@ -402,6 +385,13 @@ func TestAppointmentGetByDoctorHandler(t *testing.T) {
 	if status != http.StatusFound {
 		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
 	}
+
+	// There must be at least 1 entry because it was created in previous tests.
+	// But we don't have any appointment UUIDs to check with, so just make sure that
+	// We have at least the doctor for now.
+	if !strings.Contains(rec.Body.String(), "1cf1dca9-4a4a-4f47-8201-401bbe0fb927") {
+		t.Errorf("The response message did not contain the correct doctorUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), "1cf1dca9-4a4a-4f47-8201-401bbe0fb927")
+	}
 }
 
 func TestPatientGetByDoctorHandler(t *testing.T) {
@@ -424,4 +414,7 @@ func TestPatientGetByDoctorHandler(t *testing.T) {
 	if status != http.StatusFound {
 		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
 	}
+	// Need to check db for uuids to check in the body
 }
+
+// todo: Make function that creates connection to the DB and returns the GOCQL session.
