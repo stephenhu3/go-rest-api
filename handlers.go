@@ -46,7 +46,7 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 		// Incorrect username or password
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(Status{Code: http.StatusUnauthorized,
 			Message: "Incorrect username or password"})
 		log.Printf("Incorrect username or password")

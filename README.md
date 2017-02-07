@@ -318,7 +318,7 @@ Request:
 
 Responses:
 
-HTTP 200 Found
+HTTP 401 Unauthorized
 
 ```json
 {
