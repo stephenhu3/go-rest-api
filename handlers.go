@@ -18,14 +18,94 @@ func Index(w http.ResponseWriter, r *http.Request) {
 const UIAddr = "http://192.168.1.64:3000"
 const CASSDB = "127.0.0.1"
 
+
 func Authenticate(w http.ResponseWriter, r *http.Request) {
-	log.Println("OK")
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+	log.Println("INSIDEE")
+	// decoder := json.NewDecoder(r.Body)
+	// var a Authentication
+	// err := decoder.Decode(&a)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer r.Body.Close()
+	err := r.ParseForm()
+	if err != nil {
+		panic(err)
+	}
+	// r.Form["appointmentuuid"][0]
+
+	userName := r.Form["userName"][0]
+	passWord := r.Form["passWord"][0]
+	var userUUID gocql.UUID
+
+	if err := session.Query(`SELECT userUUID FROM authentication
+		WHERE userName = ? AND passWord = ?`, userName,
+		passWord).Consistency(gocql.One).Scan(&userUUID); err != nil {
+		// Incorrect username or password
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusUnauthorized,
+			Message: "Incorrect username or password"})
+		log.Printf("Incorrect username or password")
+		return
+	}
+
 	w.Header().Set("Set-Cookie", "userToken=test; Path=/; HttpOnly")
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.WriteHeader(http.StatusOK)
-	r.ParseForm()
-	// TODO:
+	json.NewEncoder(w).Encode(map[string]gocql.UUID{"UserUUID":userUUID})
+}
+
+
+func AuthenticationCreate(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	var a Authentication
+	err := decoder.Decode(&a)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	// generate new randomly generated UUID
+	userUUID, err := gocql.RandomUUID()
+	if err != nil {
+		log.Fatal(err)
+	}
+	userName := a.UserName
+	passWord := a.PassWord
+
+	log.Printf("Created new user: %s\t%s\t%s\t",
+		userName, passWord, userUUID)
+
+	// insert new patient entry
+	if err := session.Query(`INSERT INTO authentication (userName,
+		passWord, userUUID) VALUES (?, ?, ?)`, userName, passWord,
+		userUUID).Exec(); err != nil {
+		log.Fatal(err)
+	}
+
+	w.Header().Set("Set-Cookie", "userToken=test; Path=/; HttpOnly")
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]gocql.UUID{"UserUUID":userUUID})
 }
 
 /*
@@ -135,7 +215,7 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Patient was found")
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusFound)
+		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(Patient{PatientUUID: patientUUID,
 			Address: address, BloodType: bloodType, DateOfBirth: dateOfBirth,
 			EmergencyContact: emergencyContact, Gender: gender,
@@ -245,7 +325,7 @@ func AppointmentGetByDoctor(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(http.StatusFound)
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(appointmentList); err != nil {
 		panic(err)
 	}
@@ -327,7 +407,7 @@ func PatientGetByDoctor(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(http.StatusFound)
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(patientList); err != nil {
 		panic(err)
 	}
@@ -423,7 +503,7 @@ func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Appointment was found")
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusFound)
+		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(FutureAppointment{
 			AppointmentUUID: appointmentUUID, PatientUUID: patientUUID,
 			DoctorUUID: doctorUUID, DateScheduled: dateScheduled, Notes: notes}); err != nil {
@@ -533,7 +613,7 @@ func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Appointment was found")
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusFound)
+		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(CompletedAppointment{AppointmentUUID: appointmentUUID,
 			PatientUUID: patientUUID, DoctorUUID: doctorUUID, DateVisited: dateVisited,
 			BreathingRate: breathingRate, HeartRate: heartRate, BloodOxygenLevel: bloodOxygenLevel,

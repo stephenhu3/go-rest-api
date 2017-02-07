@@ -62,3 +62,10 @@ CREATE TABLE doctors (
 	gender text,
 	PRIMARY KEY (doctorUUID)
 );
+
+CREATE TABLE authentication (
+	userName text,
+	passWord text,
+	userUUID uuid,
+	PRIMARY KEY (userName, passWord)
+);
