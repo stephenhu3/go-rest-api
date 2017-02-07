@@ -19,10 +19,16 @@ var routes = Routes{
 		Index,
 	},
 	Route{
-		"Authenticate",
+		"UserAuthenticate",
 		"POST",
 		"/login",
-		Authenticate,
+		UserAuthenticate,
+	},
+	Route{
+		"UserCreate",
+		"POST",
+		"/users",
+		UserCreate,
 	},
 	Route{
 		"PatientCreate",

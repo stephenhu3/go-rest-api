@@ -63,7 +63,7 @@ CREATE TABLE doctors (
 	PRIMARY KEY (doctorUUID)
 );
 
-CREATE TABLE authentication (
+CREATE TABLE users (
 	userName text,
 	passWord text,
 	userUUID uuid,

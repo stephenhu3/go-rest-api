@@ -300,4 +300,62 @@ HTTP 201 Created
   "message": "Doctor entry successfully created."
 }
 ```
+
+-------------------------------------------------------
+
+POST /login
+
+**Validates user credentials and returns userUUID**
+**Requires using form body input (postman) or x-www-formurlencoded**
+Request:
+
+```json
+{
+  "userName": "wolverine@xmen.ca",
+  "passWord": "xmen",
+}
+```
+
+Responses:
+
+HTTP 200 Found
+
+```json
+{
+  "code": "401",
+  "message": "Incorrect username or password"
+}
+```
+
+HTTP 200 Found
+
+```json
+{
+  "userUUID": "556d9f18-829b-4011-a451-df571b369111"
+}
+```
+-------------------------------------------------------
+
+POST /users
+
+**Create a new user entry**
+
+Request:
+
+```json
+{
+  "userName": "wolverine@xmen.ca",
+  "passWord": "xmen",
+}
+```
+
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "userUUID": "556d9f18-829b-4011-a451-df571b369111"
+}
+```
 -------------------------------------------------------

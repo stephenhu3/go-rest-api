@@ -18,33 +18,29 @@ func Index(w http.ResponseWriter, r *http.Request) {
 const UIAddr = "http://192.168.1.64:3000"
 const CASSDB = "127.0.0.1"
 
-
-func Authenticate(w http.ResponseWriter, r *http.Request) {
+/*
+Validates a user credentials
+Method: POST
+Endpoint: /login
+*/
+func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = "emr"
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
-	log.Println("INSIDEE")
-	// decoder := json.NewDecoder(r.Body)
-	// var a Authentication
-	// err := decoder.Decode(&a)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer r.Body.Close()
+
 	err := r.ParseForm()
 	if err != nil {
 		panic(err)
 	}
-	// r.Form["appointmentuuid"][0]
 
 	userName := r.Form["userName"][0]
 	passWord := r.Form["passWord"][0]
 	var userUUID gocql.UUID
 
-	if err := session.Query(`SELECT userUUID FROM authentication
+	if err := session.Query(`SELECT userUUID FROM users
 		WHERE userName = ? AND passWord = ?`, userName,
 		passWord).Consistency(gocql.One).Scan(&userUUID); err != nil {
 		// Incorrect username or password
@@ -62,11 +58,15 @@ func Authenticate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]gocql.UUID{"UserUUID":userUUID})
+	json.NewEncoder(w).Encode(map[string]gocql.UUID{"userUUID":userUUID})
 }
 
-
-func AuthenticationCreate(w http.ResponseWriter, r *http.Request) {
+/*
+Create a user entry
+Method: POST
+Endpoint: /users
+*/
+func UserCreate(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = "emr"
@@ -93,8 +93,8 @@ func AuthenticationCreate(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Created new user: %s\t%s\t%s\t",
 		userName, passWord, userUUID)
 
-	// insert new patient entry
-	if err := session.Query(`INSERT INTO authentication (userName,
+	// insert new user entry
+	if err := session.Query(`INSERT INTO users (userName,
 		passWord, userUUID) VALUES (?, ?, ?)`, userName, passWord,
 		userUUID).Exec(); err != nil {
 		log.Fatal(err)
@@ -105,7 +105,7 @@ func AuthenticationCreate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]gocql.UUID{"UserUUID":userUUID})
+	json.NewEncoder(w).Encode(map[string]gocql.UUID{"userUUID":userUUID})
 }
 
 /*
