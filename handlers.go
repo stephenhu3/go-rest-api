@@ -75,7 +75,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
-	var a Authentication
+	var a User
 	err := decoder.Decode(&a)
 	if err != nil {
 		panic(err)
