@@ -144,7 +144,7 @@ HTTP 201 Created
 }
 ```
 -------------------------------------------------------
-GET /futureappointments/search?appointmentuuid=:appointmentuuid
+GET /completedappointments/search?appointmentuuid=:appointmentuuid
 
 **Retrieves a completed appointment entry**
 
