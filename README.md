@@ -254,7 +254,7 @@ HTTP 302 Found
 
 -------------------------------------------------------
 
-GET /doctor/doctoruuid/{doctoruuid}
+GET /doctors/doctoruuid/{doctoruuid}
 
 **Retrieves a doctor profile**
 
@@ -300,7 +300,6 @@ HTTP 201 Created
   "message": "Doctor entry successfully created."
 }
 ```
-
 -------------------------------------------------------
 
 POST /login
