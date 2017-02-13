@@ -395,6 +395,22 @@ func TestAppointmentGetByDoctorHandler(t *testing.T) {
 }
 
 func TestPatientGetByDoctorHandler(t *testing.T) {
+	var patientUUID gocql.UUID
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	// This keyspace can be changed later for tests (i.e. emr_test )
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	patientErr := session.Query("SELECT * FROM patients").Consistency(gocql.One).Scan(&patientUUID,
+		nil, nil, nil, nil, nil, nil, nil, nil, nil)
+
+	if patientErr != nil {
+		t.Fatal(patientErr)
+	}
+
 	endpoint := "/patients/doctoruuid/1cf1dca9-4a4a-4f47-8201-401bbe0fb927"
 	// The doctorUUID is the same as the UUID used for doctors in the test above.
 	req, err := http.NewRequest("GET", endpoint, nil)
@@ -415,6 +431,9 @@ func TestPatientGetByDoctorHandler(t *testing.T) {
 		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
 	}
 	// Need to check db for uuids to check in the body
+	if !strings.Contains(rec.Body.String(), patientUUID.String()) {
+		t.Errorf("The response message did not contain the correct doctorUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
+	}
 }
 
 // todo: Make function that creates connection to the DB and returns the GOCQL session.
