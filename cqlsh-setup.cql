@@ -67,5 +67,18 @@ CREATE TABLE users (
 	userName text,
 	passWord text,
 	userUUID uuid,
+	role text,
 	PRIMARY KEY (userName, passWord)
+);
+
+CREATE TABLE prescriptions (
+	patientUUID uuid,
+	prescriptionUUID uuid,
+	doctorUUID uuid,
+	doctorName text,
+	drug text,
+	startDate int,
+	endDate int,
+	instructions text,
+	PRIMARY KEY (patientUUID, endDate, prescriptionUUID)
 );

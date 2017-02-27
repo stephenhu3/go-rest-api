@@ -90,4 +90,28 @@ var routes = Routes{
 		"/doctors/doctoruuid/{doctoruuid}",
 		DoctorGet,
 	},
+	Route{
+		"PrescriptionCreate",
+		"POST",
+		"/prescription",
+		PrescriptionCreate,
+	},
+	Route{
+		"PrescriptionsGetByPatient",
+		"GET",
+		"/prescriptions/patientuuid/{patientuuid}",
+		PrescriptionsGetByPatient,
+	},
+	Route{
+		"AppointmentGetByPatient",
+		"GET",
+		"/appointments/patientuuid/{patientuuid}",
+		AppointmentGetByPatient,
+	},
+	Route{
+		"PatientUpdate",
+		"PUT",
+		"/patients",
+		PatientUpdate,
+	},
 }

@@ -359,3 +359,98 @@ HTTP 201 Created
 }
 ```
 -------------------------------------------------------
+
+PUT /patients
+
+**Update an new user entry**
+
+Request:
+
+```json
+{
+  "patientUUID": "556d9f18-829b-4011-a451-df571b369111",
+  "address": "5698 Cedar Avenue, San Francisco, California",
+  "bloodType": "B-Positive",
+  "dateOfBirth": 191289600,
+  "emergencyContact": "415-555-8271",
+  "gender": "F",
+  "medicalNumber": "1234567890",
+  "name": "Kelly Lai",
+  "notes": "Accompanied by guide dog, ensure patient's area is wheelchair-friendly",
+  "phoneNumber": "483-555-5123"
+}
+```
+
+Response:
+
+HTTP 200 OK
+
+```json
+{
+  "code": 200,
+  "message": "Patient entry successfully updated."
+}
+```
+
+HTTP 400 OK
+
+```json
+{
+  "code": 400,
+  "message": "Error Occured: Patient not updated."
+}
+```
+-------------------------------------------------------
+
+POST /prescription
+
+**Create a new prescription for a patient**
+
+Request:
+
+```json
+{
+  "patientUUID": 556d9f18-829b-4011-a451-df571b369111,
+  "doctorUUID": 40119f18-829b-4011-a451-b369111df571.
+  "doctor,omitempty": "Dr Ramoray",
+  "drug": "Drug Name",
+  "startDate": 191289600,
+  "endDate": 191389600,
+  "instructions,omitempty": "take twice daily"
+}
+```
+
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "code": 201,
+  "message": "Prescription entry successfully created."
+}
+```
+-------------------------------------------------------
+GET /prescriptions/patientuuid/{patientuuid}
+
+**Retrieves a list of a patients prescriptions **
+
+Response:
+
+HTTP 200 Found
+
+```json
+[
+{
+  "patientUUID": 556d9f18-829b-4011-a451-df571b369111,
+  "doctorUUID": 40119f18-829b-4011-a451-b369111df571.
+  "prescriptionUUID": 57c7aea1-9fea-422d-ae35-dbf8ce5f5dda
+  "doctor,omitempty": "Dr Ramoray",
+  "drug": "Drug Name",
+  "startDate": 191289600,
+  "endDate": 191389600,
+  "instructions,omitempty": "take twice daily"
+}
+]
+```
+-------------------------------------------------------

@@ -18,6 +18,15 @@ func Index(w http.ResponseWriter, r *http.Request) {
 const UIAddr = "http://192.168.1.64:3000"
 const CASSDB = "127.0.0.1"
 
+
+func PreFlight(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Length", "0")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT")
+	w.WriteHeader(http.StatusOK)
+	// json.NewEncoder(w).Encode()
+}
 /*
 Validates a user credentials
 Method: POST
@@ -226,6 +235,66 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
+Update a patient entry
+Method: PUT
+Endpoint: /patients
+*/
+func PatientUpdate(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	var p Patient
+	err := decoder.Decode(&p)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	patientUUID := p.PatientUUID
+	address := p.Address
+	bloodType := p.BloodType
+	dateOfBirth := p.DateOfBirth
+	emergencyContact := p.EmergencyContact
+	gender := p.Gender
+	medicalNumber := p.MedicalNumber
+	name := p.Name
+	notes := p.Notes
+	phone := p.Phone
+
+	log.Printf("Udpateing patient: %s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t",
+		patientUUID, address, bloodType, dateOfBirth, emergencyContact, gender,
+		medicalNumber, name, notes, phone)
+
+	// update patient entry
+	if err := session.Query(`UPDATE patients SET address = ?, bloodType = ?, dateOfBirth = ?,
+		emergencyContact = ?, gender = ?, medicalNumber = ?, name = ?, notes = ?, phone = ?
+		WHERE patientUuid = ? IF EXISTS`,
+		address, bloodType, dateOfBirth, emergencyContact, gender, medicalNumber, name, notes,
+		phone, patientUUID).Exec(); err != nil {
+		// patient was not found
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+			Message: "Error Occured: Patient not updated"})
+		log.Printf("Patient not updated")
+		return
+	}
+
+	// send success response
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(Status{Code: http.StatusOK,
+		Message: "Patient entry successfully updated."})
+}
+
 func mapPatients(m *map[gocql.UUID]string, patientUUID gocql.UUID, session *gocql.Session) {
 	// note: need to dereference for map
 	if _, found := (*m)[patientUUID]; !found {
@@ -238,6 +307,95 @@ func mapPatients(m *map[gocql.UUID]string, patientUUID gocql.UUID, session *gocq
 		}
 		// cache name to UUID for populating appointment list
 		(*m)[patientUUID] = name
+	}
+}
+
+/*
+Returns a list of scheduled and completed appointments for a specific patient
+Method: GET
+Endpoint: /appointments/patientuuid/{patientuuid}
+*/
+func AppointmentGetByPatient(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
+	}
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
+
+	// Get all future appointments by patient
+	iter := session.Query("SELECT * FROM futureappointments WHERE patientuuid = ?",
+		searchUUID).Consistency(gocql.One).Iter()
+
+	// Get all completed appointments by patient
+	completedIter := session.Query("SELECT * FROM completedappointments WHERE patientuuid = ?",
+		searchUUID).Consistency(gocql.One).Iter()
+
+	// no appointments found
+	if iter.NumRows() == 0 && completedIter.NumRows() == 0 {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound, Message: "Not Found"})
+		log.Printf("Scheduled appointments not found")
+		return
+	}
+
+	appointmentList := make([]GenericAppointment, iter.NumRows()+completedIter.NumRows())
+	i := 0
+	m := make(map[gocql.UUID]string)
+	var appointmentUUID gocql.UUID
+	var dateVisited int
+	var dateScheduled int
+	var doctorUUID gocql.UUID
+	var notes string
+	var patientUUID gocql.UUID
+	var name string
+
+	// scheduled appointment(s) found
+	if iter.NumRows() > 0 {
+		log.Printf("Scheduled appointments found")
+
+		for iter.Scan(&appointmentUUID, &dateScheduled, &doctorUUID, &notes, &patientUUID) {
+			// Search patient table to get patient name, cache patient names
+			mapPatients(&m, patientUUID, session)
+			name = m[patientUUID]
+
+			appointmentList[i] = GenericAppointment{
+				AppointmentUUID: appointmentUUID, PatientUUID: patientUUID,
+				DoctorUUID: doctorUUID, DateScheduled: dateScheduled,
+				DateVisited: 0, Notes: notes, PatientName: name}
+			i++
+		}
+	}
+
+	// completed appointment(s) found
+	if completedIter.NumRows() > 0 {
+		log.Printf("Completed appointments found")
+
+		for completedIter.Scan(&appointmentUUID, nil, nil, nil, &dateVisited,
+			&doctorUUID, nil, &notes, &patientUUID) {
+			mapPatients(&m, patientUUID, session)
+			name = m[patientUUID]
+
+			appointmentList[i] = GenericAppointment{
+				AppointmentUUID: appointmentUUID, PatientUUID: patientUUID,
+				DoctorUUID: doctorUUID, DateScheduled: 0, DateVisited: dateVisited,
+				Notes: notes, PatientName: name}
+			i++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(appointmentList); err != nil {
+		panic(err)
 	}
 }
 
@@ -730,4 +888,115 @@ func DoctorGet(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 	}
+}
+
+/*
+Returns a list of prescriptions for a specific patient
+Method: GET
+Endpoint: /prescriptions/patientuuid/{patientuuid}
+*/
+func PrescriptionsGetByPatient(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
+	}
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
+
+	// Get all prescriptions for a patient
+	iter := session.Query(`SELECT * FROM prescriptions WHERE patientuuid = ?
+		ORDER BY endDate DESC`, searchUUID).Consistency(gocql.One).Iter()
+
+	prescriptionList := make(Prescriptions, iter.NumRows())
+	i := 0
+
+	var doctorName string
+	var doctorUUID gocql.UUID
+	var drug string
+	var endDate int
+	var instructions string
+	var patientUUID gocql.UUID
+	var prescriptionUUID gocql.UUID
+	var startDate int
+
+	// prescriptions found
+	if iter.NumRows() > 0 {
+		log.Printf("prescriptions found")
+
+		for iter.Scan(&patientUUID, &endDate, &prescriptionUUID, &doctorName,
+			&doctorUUID, &drug, &instructions, &startDate){
+			prescriptionList[i] = Prescription{
+				DoctorName: doctorName, DoctorUUID: doctorUUID, Drug: drug,
+				EndDate: endDate, Instructions: instructions, PatientUUID: patientUUID,
+				PrescriptionUUID: prescriptionUUID, StartDate: startDate}
+			i++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(prescriptionList); err != nil {
+		panic(err)
+	}
+}
+
+/*
+Create a new Prescription
+Method: POST
+Endpoint: /prescription
+*/
+func PrescriptionCreate(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	var d Prescription
+	err := decoder.Decode(&d)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	// generate new randomly generated UUID
+	prescriptionUUID, err := gocql.RandomUUID()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	doctorName := d.DoctorName
+	doctorUUID := d.DoctorUUID
+	drug := d.Drug
+	endDate := d.EndDate
+	instructions := d.Instructions
+	patientUUID := d.PatientUUID
+	startDate := d.StartDate
+
+	log.Printf("Created new prescription: %s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t",
+		doctorName, doctorUUID, drug, endDate, instructions, patientUUID,
+		prescriptionUUID, startDate)
+
+	// insert new prescription entry
+	if err := session.Query(`INSERT INTO prescriptions (doctorName, doctorUUID,
+		drug, endDate, instructions, patientUUID, prescriptionUUID, startDate)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, doctorName, doctorUUID, drug, endDate,
+		instructions, patientUUID, prescriptionUUID, startDate).Exec(); err != nil {
+		log.Fatal(err)
+	}
+
+	// send success response
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
+		Message: "Prescription entry successfully created."})
 }
