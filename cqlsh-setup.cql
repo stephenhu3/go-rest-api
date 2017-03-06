@@ -92,3 +92,13 @@ CREATE TABLE notifications (
 	senderUUID uuid,
 	PRIMARY KEY (receiverUUID, date, notificationuuid)
 ) WITH CLUSTERING ORDER BY (date DESC);
+
+CREATE TABLE documents (
+	documentUUID uuid,
+	patientUUID uuid,
+	filename text,
+	content blob,
+	dateUploaded int,
+	PRIMARY KEY (documentUUID)
+);
+CREATE INDEX documentsPatientUUID ON emr.documents (patientUUID);

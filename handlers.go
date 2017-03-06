@@ -3,8 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gocql/gocql"
@@ -783,8 +787,6 @@ func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
-
 /*
 Create a Doctor entry
 Method: POST
@@ -866,8 +868,7 @@ func DoctorGet(w http.ResponseWriter, r *http.Request) {
 	// get the doctor entry
 	if err := session.Query("SELECT * FROM doctors WHERE doctorUUID = ?",
 		searchUUID).Consistency(gocql.One).Scan(&doctorUUID, &gender,
-		&name, &phoneNumber, &primaryFacility, &primarySpecialty);
-		err != nil {
+		&name, &phoneNumber, &primaryFacility, &primarySpecialty); err != nil {
 		// doctor was not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusNotFound)
@@ -885,8 +886,7 @@ func DoctorGet(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(Doctor{DoctorUUID: doctorUUID,
 			Name: name, Phone: phoneNumber, PrimaryFacility: primaryFacility,
-			PrimarySpecialty: primarySpecialty, Gender: gender});
-			err != nil {
+			PrimarySpecialty: primarySpecialty, Gender: gender}); err != nil {
 			panic(err)
 		}
 	}
@@ -1106,5 +1106,117 @@ func NotificationsGetByDoctor(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(notiList); err != nil {
 		panic(err)
+
+
+/*
+
+Upload a document
+Method: POST
+Endpoint: /upload
+*/
+func DocumentUpload(w http.ResponseWriter, r *http.Request) {
+
+	// get the multipart reader for request
+	reader, err := r.MultipartReader()
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// copy each part
+	var path string
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+
+		// skip current iteration if empty
+		if part.FileName() == "" {
+			continue
+		}
+
+		path = "/documents/" + part.FileName()
+		dst, err := os.Create(path)
+		defer dst.Close()
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if _, err := io.Copy(dst, part); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	log.Printf("Uploaded:" + path)
+}
+
+/*
+Download a document given its UUID
+Method: GET
+Endpoint: /documents/documentuuid/{documentuuid}
+*/
+func DocumentGet(w http.ResponseWriter, r *http.Request) {
+	var documentUUID gocql.UUID
+	var filename string
+	var content []byte
+
+	// download the document
+	if err := session.Query("SELECT content, filename FROM documents WHERE documentUUID = ?",
+		searchUUID).Consistency(gocql.One).Scan(&content, &filename); err != nil {
+		// document was not found
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+			Message: "Not Found"})
+		log.Printf("No document found")
+		return
+	}
+
+	// else, document was found
+	if len(documentUUID) > 0 {
+		log.Printf("document was found")
+		err := ioutil.WriteFile(filename, content, 0755)
+		// issue with writing file
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+				Message: "Not Found"})
+			return
+		}
+
+		fopen, err := os.Open(filename)
+		defer fopen.Close()
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+				Message: "Not Found"})
+			return
+		}
+
+		// determine file content type
+		header := make([]byte, 512)
+		fopen.Read(header)
+		fileType := http.DetectContentType(header)
+
+		stat, _ := fopen.Stat()
+		fileSize := strconv.FormatInt(stat.Size(), 10)
+
+		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+		w.Header().Set("Content-Type", fileType)
+		w.Header().Set("Content-Length", fileSize)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusOK)
+
+		// send the file (read 512 bytes from the file already so reset offset)
+		fopen.Seek(0, 0)
+		io.Copy(w, fopen)
+		return
 	}
 }
