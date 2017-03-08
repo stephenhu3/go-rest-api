@@ -126,10 +126,10 @@ var routes = Routes{
 		"/notifications/doctoruuid/{doctoruuid}",
 		NotificationsGetByDoctor,
 	Route{
-		"DocumentUpload",
+		"DocumentCreate",
 		"POST",
 		"/documents",
-		DocumentUpload,
+		DocumentCreate,
 	},
 	Route{
 		"DocumentGet",

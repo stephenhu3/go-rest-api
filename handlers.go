@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1112,47 +1113,58 @@ func NotificationsGetByDoctor(w http.ResponseWriter, r *http.Request) {
 
 Upload a document
 Method: POST
-Endpoint: /upload
+Endpoint: /document
 */
-func DocumentUpload(w http.ResponseWriter, r *http.Request) {
+func DocumentCreate(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
 
-	// get the multipart reader for request
-	reader, err := r.MultipartReader()
 
+
+	decoder := json.NewDecoder(r.Body)
+	var d Document
+	err := decoder.Decode(&d)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	// generate new randomly generated UUID (version 4)
+	documentUUID, err := gocql.RandomUUID()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// copy each part
-	var path string
-	for {
-		part, err := reader.NextPart()
-		if err == io.EOF {
-			break
-		}
-
-		// skip current iteration if empty
-		if part.FileName() == "" {
-			continue
-		}
-
-		path = "/documents/" + part.FileName()
-		dst, err := os.Create(path)
-		defer dst.Close()
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if _, err := io.Copy(dst, part); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	patientUUID := d.PatientUUID
+	filename := d.Filename
+	dateUploaded := d.DateUploaded
+	content := d.Content
+	// base64 decode
+	binaryContent, err := base64.StdEncoding.DecodeString(content)
+	if err != nil {
+		log.Fatal("error:", err)
 	}
 
-	log.Printf("Uploaded:" + path)
+	log.Printf("Created new document: %s\t%s\t%s\t%d\t",
+		documentUUID, patientUUID, filename, dateUploaded)
+
+	// insert new document entry
+	if err := session.Query(`INSERT INTO documents (documentUUID,
+		patientUUID, filename, dateUploaded, content) VALUES (?, ?, ?, ?, ?)`,
+		documentUUID, patientUUID, filename, dateUploaded,
+		binaryContent).Exec(); err != nil {
+		log.Fatal(err)
+	}
+
+	// send success response
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
+		Message: "Document entry successfully created."})
 }
 
 /*
