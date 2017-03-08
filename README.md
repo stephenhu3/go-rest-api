@@ -543,5 +543,5 @@ GET /documents/documentuuid/{documentuuid}
 Response:
 
 HTTP 200 Found
-```Downloads the requested file```
+Downloads the requested file
 -------------------------------------------------------
