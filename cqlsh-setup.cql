@@ -82,3 +82,13 @@ CREATE TABLE prescriptions (
 	instructions text,
 	PRIMARY KEY (patientUUID, endDate, prescriptionUUID)
 );
+
+CREATE TABLE notifications (
+	date int,
+	message text,
+	notificationuuid uuid,
+	receiverUUID uuid,
+	senderName text,
+	senderUUID uuid,
+	PRIMARY KEY (receiverUUID, date, notificationuuid)
+) WITH CLUSTERING ORDER BY (date DESC);

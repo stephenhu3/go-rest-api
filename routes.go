@@ -69,7 +69,7 @@ var routes = Routes{
 	Route{
 		"CompletedAppointmentGet",
 		"GET",
-		"/completedappointments/search",
+		"/completedappointments/appointmentuuid/{apointmentuuid}",
 		CompletedAppointmentGet,
 	},
 	Route{
@@ -113,5 +113,17 @@ var routes = Routes{
 		"PUT",
 		"/patients",
 		PatientUpdate,
+	},
+	Route{
+		"NotificationCreate",
+		"POST",
+		"/notifications",
+		NotificationCreate,
+	},
+	Route{
+		"NotificationsGetByDoctor",
+		"GET",
+		"/notifications/doctoruuid/{doctoruuid}",
+		NotificationsGetByDoctor,
 	},
 }

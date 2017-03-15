@@ -727,7 +727,7 @@ func CompletedAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 /*
 Search for info on a completed appointment
 Method: GET
-Endpoint: /completedappointments/search?appointmentuuid=:appointmentuuid
+Endpoint: /completedappointments/appointmentuuid/{appointmentuuid}
 */
 func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
@@ -737,11 +737,12 @@ func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	err := r.ParseForm()
-	if err != nil {
-		panic(err)
+
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
 	}
-	var searchUUID = r.Form["appointmentuuid"][0]
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
 
 	var appointmentUUID gocql.UUID
 	var patientUUID gocql.UUID
@@ -759,6 +760,7 @@ func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
 		&breathingRate, &dateVisited, &doctorUUID, &heartRate, &notes, &patientUUID); err != nil {
 		// appointment was not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
 			Message: "Not Found"})
@@ -996,7 +998,113 @@ func PrescriptionCreate(w http.ResponseWriter, r *http.Request) {
 
 	// send success response
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
 		Message: "Prescription entry successfully created."})
+}
+
+/*
+Create a new notification for a doctor
+Method: POST
+Endpoint: /notifications
+*/
+func NotificationCreate(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	var n Notification
+	err := decoder.Decode(&n)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+
+	// generate new randomly generated UUID
+	notificationUUID, err := gocql.RandomUUID()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	date := n.Date
+	message := n.Messsage
+	receiverUUID := n.ReceiverUUID
+	senderName := n.SenderName
+	senderUUID := n.SenderUUID
+
+	log.Printf("Creating new notification: %d\t%s\t%s\t%s\t%s\t%s\t",
+		date, message, senderUUID, receiverUUID, senderName, senderUUID)
+
+	// insert new notification entry
+	if err := session.Query(`INSERT INTO notifications (receiverUUID, date, notificationUUID,
+		message, senderName, senderUUID) VALUES (?, ?, ?, ?, ?, ?)`,
+		receiverUUID, date, notificationUUID, message, senderName, senderUUID).Exec();
+		err != nil {
+			log.Fatal(err)
+	}
+
+	// send success response
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
+		Message: "Notification entry successfully created."})
+}
+
+
+/*
+Returns a list of notifications for a specific doctor
+Method: GET
+Endpoint: /notifications/doctoruuid/{doctoruuid}
+*/
+func NotificationsGetByDoctor(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
+	}
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
+
+	// Get all notifications for a doctor, limit to last 100
+	iter := session.Query(`SELECT receiverUUID, date, message, senderUUID, senderName FROM
+		notifications WHERE receiverUUID = ? LIMIT 100`, searchUUID).Consistency(gocql.One).Iter()
+
+	notiList := make(Notifications, iter.NumRows())
+	i := 0
+
+	var date int
+	var message string
+	var receiverUUID gocql.UUID
+	var senderName string
+	var senderUUID gocql.UUID
+
+	// notifications found
+	if iter.NumRows() > 0 {
+		log.Printf("Notifications found")
+
+		for iter.Scan(&receiverUUID, &date, &message, &senderUUID, &senderName){
+			notiList[i] = Notification {
+				Date: date, Messsage: message,
+				ReceiverUUID: receiverUUID, SenderName: senderName, SenderUUID: senderUUID }
+			i++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(notiList); err != nil {
+		panic(err)
+	}
 }

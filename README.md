@@ -454,3 +454,59 @@ HTTP 200 Found
 ]
 ```
 -------------------------------------------------------
+
+
+POST /notifications
+
+**Create a new notificatoins for a doctor**
+
+Request:
+
+```json
+{
+"date":1488254862,
+"message":"Hey man?",
+"senderUUID":"20a5e81c-399f-4777-8bea-9c1fc2388f37",
+"receiverUUID":"4498720b-0491-424f-8e52-6e13bd33da71",
+"senderName":"Cyclops"
+}
+```
+
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "code": 201,
+  "message": "Notification entry successfully created."
+}
+```
+-------------------------------------------------------
+GET /notifications/doctoruuid/{doctoruuid}
+
+**Retrieves a list of a doctor's notifications**
+
+Response:
+
+HTTP 200 Found
+
+```json
+[
+  {
+    "date": 1488254862,
+    "message": "Have you seen Jean?",
+    "receiverUUID": "4498720b-0491-424f-8e52-6e13bd33da71",
+    "senderName": "Cyclops",
+    "senderUUID": "20a5e81c-399f-4777-8bea-9c1fc2388f37"
+  },
+  {
+    "date": 1388254862,
+    "message": "Hey man?",
+    "receiverUUID": "4498720b-0491-424f-8e52-6e13bd33da71",
+    "senderName": "Cyclops",
+    "senderUUID": "20a5e81c-399f-4777-8bea-9c1fc2388f37"
+  }
+]
+```
+-------------------------------------------------------
