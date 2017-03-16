@@ -545,3 +545,23 @@ Response:
 HTTP 200 Found (Downloads the requested file)
 
 -------------------------------------------------------
+
+GET /documents/patientuuid/{patientuuid}
+
+**Retrieves a list of a patients's documents**
+
+Response:
+
+HTTP 200 Found
+
+```json
+[
+  {
+    "documentUUID": "4498720b-0491-424f-8e52-6e13bd33da71",
+    "patientUUID": "20a5e81c-399f-4777-8bea-9c1fc2388f37",
+    "filename": "fileName.pdf"
+    "dateUploaded": 1488254862
+  }
+]
+```
+-------------------------------------------------------

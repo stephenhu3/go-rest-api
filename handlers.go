@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,9 +25,11 @@ const CASSDB = "127.0.0.1"
 
 func PreFlight(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", "0")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Range")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT")
+	w.Header().Set("Access-Control-Expose-Headers", "Accept-Ranges, Content-Encoding, Content-Length, Content-Range")
+
 	w.WriteHeader(http.StatusOK)
 	// json.NewEncoder(w).Encode()
 }
@@ -1124,26 +1125,23 @@ func DocumentCreate(w http.ResponseWriter, r *http.Request) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	decoder := json.NewDecoder(r.Body)
-	var d Document
-	err := decoder.Decode(&d)
-	if err != nil {
-		panic(err)
-	}
-	defer r.Body.Close()
-
 	// generate new randomly generated UUID (version 4)
 	documentUUID, err := gocql.RandomUUID()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	patientUUID := d.PatientUUID
-	filename := d.Filename
-	dateUploaded := d.DateUploaded
-	content := d.Content
-	// base64 decode
-	binaryContent, err := base64.StdEncoding.DecodeString(content)
+	patientUUID := r.FormValue("patientUUID")
+	filename := r.FormValue("filename")
+	dateUploaded := r.FormValue("dateUploaded")
+
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	binaryContent, err := ioutil.ReadAll(file)
+
 	if err != nil {
 		log.Fatal("error:", err)
 	}
@@ -1161,9 +1159,10 @@ func DocumentCreate(w http.ResponseWriter, r *http.Request) {
 
 	// send success response
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
-		Message: "Document entry successfully created."})
+	// returns the created documentuuid on success
+	json.NewEncoder(w).Encode(map[string]gocql.UUID{"documentuuid":documentUUID})
 }
 
 /*
@@ -1184,7 +1183,7 @@ func DocumentGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var searchUUID = strings.Split(r.RequestURI, "/")[3]
-	
+
 	var documentUUID gocql.UUID
 	var filename string
 	var content []byte
@@ -1236,11 +1235,69 @@ func DocumentGet(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", fileType)
 		w.Header().Set("Content-Length", fileSize)
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Range")
+		w.Header().Set("Access-Control-Expose-Headers", "Accept-Ranges, Content-Encoding, Content-Length, Content-Range")
+
 		w.WriteHeader(http.StatusOK)
 
 		// send the file (read 512 bytes from the file already so reset offset)
 		fopen.Seek(0, 0)
 		io.Copy(w, fopen)
 		return
+	}
+}
+
+/*
+Returns an index list of documents for a given patient
+Method: GET
+Endpoint: /documents/patientuuid/{patientuuid}
+*/
+func DocumentListGetByPatient(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
+	}
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
+
+	// Get all documents metadata of a patient
+	iter := session.Query(`SELECT documentuuid, dateuploaded, filename, patientuuid FROM documents
+		WHERE patientuuid = ?`, searchUUID).Consistency(gocql.One).Iter()
+
+	// no documents found
+	if iter.NumRows() == 0 {
+		log.Printf("No documents found for patient")
+	}
+
+	docuList := make([]Document, iter.NumRows())
+	i := 0
+	var documentUUID gocql.UUID
+	var patientUUID gocql.UUID
+	var filename     string
+	var dateUploaded int
+
+	// documents found
+	if iter.NumRows() > 0 {
+		log.Printf("Documents found")
+
+		for iter.Scan(&documentUUID, &dateUploaded, &filename, &patientUUID) {
+			docuList[i] = Document{
+				 DocumentUUID: documentUUID, PatientUUID: patientUUID, Filename: filename,
+				 DateUploaded: dateUploaded}
+			i++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(docuList); err != nil {
+		panic(err)
 	}
 }

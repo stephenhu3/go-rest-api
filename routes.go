@@ -138,4 +138,10 @@ var routes = Routes{
 		"/documents/documentuuid/{documentuuid}",
 		DocumentGet,
 	},
+	Route{
+		"DocumentListGetByPatient",
+		"GET",
+		"/documents/patientuuid/{patientuuid}",
+		DocumentListGetByPatient,
+	},
 }
