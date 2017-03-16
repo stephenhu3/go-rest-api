@@ -125,6 +125,7 @@ var routes = Routes{
 		"GET",
 		"/notifications/doctoruuid/{doctoruuid}",
 		NotificationsGetByDoctor,
+	},
 	Route{
 		"DocumentCreate",
 		"POST",

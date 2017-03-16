@@ -1107,7 +1107,8 @@ func NotificationsGetByDoctor(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(notiList); err != nil {
 		panic(err)
-
+	}
+}
 
 /*
 
@@ -1122,8 +1123,6 @@ func DocumentCreate(w http.ResponseWriter, r *http.Request) {
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
-
-
 
 	decoder := json.NewDecoder(r.Body)
 	var d Document
@@ -1173,6 +1172,19 @@ Method: GET
 Endpoint: /documents/documentuuid/{documentuuid}
 */
 func DocumentGet(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
+	}
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
+	
 	var documentUUID gocql.UUID
 	var filename string
 	var content []byte
