@@ -25,6 +25,12 @@ var routes = Routes{
 		UserAuthenticate,
 	},
 	Route{
+		"UserGet",
+		"GET",
+		"/users/useruuid/{useruuid}",
+		UserGet,
+	},
+	Route{
 		"UserCreate",
 		"POST",
 		"/users",

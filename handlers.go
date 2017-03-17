@@ -53,11 +53,14 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 
 	userName := r.Form["userName"][0]
 	passWord := r.Form["passWord"][0]
-	var userUUID gocql.UUID
 
-	if err := session.Query(`SELECT userUUID FROM users
-		WHERE userName = ? AND passWord = ?`, userName,
-		passWord).Consistency(gocql.One).Scan(&userUUID); err != nil {
+	var userUUID gocql.UUID
+	var role string
+	var name string
+
+	if err := session.Query(`SELECT userUUID, role, name FROM users WHERE userName = ?
+		AND passWord = ?`, userName, passWord).Consistency(gocql.One).Scan(&userUUID,
+		&role, &name); err != nil {
 		// Incorrect username or password
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -73,7 +76,59 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]gocql.UUID{"userUUID":userUUID})
+	if err := json.NewEncoder(w).Encode( User{ UserUUID: userUUID, Role: role, Name: name } );
+	err != nil {
+		panic(err)
+	}
+}
+
+/*
+Search for a user's basic info
+Method: GET
+Endpoint: /users/useruuid/{useruuid}
+*/
+func UserGet(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
+	}
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
+
+	var userUUID gocql.UUID
+	var role string
+	var name string
+
+	// get the user entry
+	if err := session.Query(`SELECT userUUID, role, name FROM users WHERE useruuid=?`,
+		searchUUID).Consistency(gocql.One).Scan(&userUUID, &role, &name); err != nil {
+		// user not found
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+			Message: "Not Found"})
+		log.Printf("User not found")
+		log.Println(err)
+		return
+	}
+
+	// User was found
+	if len(userUUID) > 0 {
+		log.Printf("User was found")
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode( User{ UserUUID: userUUID, Role: role, Name: name } );
+		err != nil {
+			panic(err)
+		}
+	}
 }
 
 /*

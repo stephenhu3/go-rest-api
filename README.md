@@ -330,10 +330,30 @@ HTTP 200 Found
 
 ```json
 {
+  "name": "Wolverine",
+  "role": "Doctor",
   "userUUID": "556d9f18-829b-4011-a451-df571b369111"
 }
 ```
 -------------------------------------------------------
+
+GET /users/useruuid/{useruuid}
+
+**Get users basic information**
+
+Responses:
+
+HTTP 200 Found
+
+```json
+{
+  "name": "Wolverine",
+  "role": "Doctor",
+  "userUUID": "556d9f18-829b-4011-a451-df571b369111"
+}
+```
+-------------------------------------------------------
+
 
 POST /users
 

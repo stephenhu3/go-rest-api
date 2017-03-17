@@ -68,8 +68,10 @@ CREATE TABLE users (
 	passWord text,
 	userUUID uuid,
 	role text,
+	name text,
 	PRIMARY KEY (userName, passWord)
 );
+CREATE INDEX usersUserUUID ON emr.users (userUUID);
 
 CREATE TABLE prescriptions (
 	patientUUID uuid,
