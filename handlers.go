@@ -752,11 +752,7 @@ func CompletedAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// generate new randomly generated UUID (version 4)
-	appointmentUuid, err := gocql.RandomUUID()
-	if err != nil {
-		log.Fatal(err)
-	}
+	appointmentUuid := c.AppointmentUUID
 	patientUUID := c.PatientUUID
 	doctorUUID := c.DoctorUUID
 	dateVisited := c.DateVisited
@@ -765,24 +761,48 @@ func CompletedAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 	bloodOxygenLevel := c.BloodOxygenLevel
 	bloodPressure := c.BloodPressure
 	notes := c.Notes
-	log.Printf("Created completed  appointment: %s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\t",
+
+	// var deleteSuccess bool
+	if deleteSuccess, err := session.Query(`DELETE FROM futureappointments WHERE appointmentuuid=? IF EXISTS`,
+		appointmentUuid).ScanCAS(); err != nil {
+		log.Fatal(err)
+	} else if deleteSuccess {
+		// generate new randomly generated UUID (version 4)
+		// Any appointments within futureappointments is removed once a completedappointment
+		// entry is created to replace the appointment
+		appointmentUuid, err = gocql.RandomUUID()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	log.Printf("Updating appointment: %s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\t",
 		appointmentUuid, patientUUID, doctorUUID, dateVisited, breathingRate, heartRate,
 		bloodOxygenLevel, bloodPressure, notes)
 
-	// insert new completed appointment entry
-	if err := session.Query(`INSERT INTO completedAppointments (appointmentUuid,
-		patientUUID, doctorUUID, dateVisited, breathingRate, heartRate, bloodOxygenLevel,
-		bloodPressure, notes) VALUES (?, ?, ?, ?, ?, ? , ?, ?, ?)`,
-		appointmentUuid, patientUUID, doctorUUID, dateVisited, breathingRate, heartRate,
-		bloodOxygenLevel, bloodPressure, notes).Exec(); err != nil {
-		log.Fatal(err)
+	// update appointment entry, create entry if does not exist
+	if err := session.Query(`UPDATE completedappointments SET patientUUID = ?,
+		doctorUUID = ?, dateVisited = ?, breathingRate = ?, heartRate = ?, bloodOxygenLevel = ?,
+		bloodPressure = ?, notes = ? WHERE appointmentUuid = ?`, patientUUID,
+		doctorUUID, dateVisited, breathingRate, heartRate, bloodOxygenLevel, bloodPressure, notes,
+		appointmentUuid).Exec(); err != nil {
+		// Appointment not created/updated
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+			Message: "Error Occured: Appointment not updated/created"})
+		log.Printf("Appointment not updated/created")
+		log.Println(err)
+		return
 	}
 
 	// send success response
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
-		Message: "Appointment entry successfully created."})
+		Message: "Appointment entry successfully updated/created."})
 }
 
 /*
@@ -1020,39 +1040,39 @@ func PrescriptionCreate(w http.ResponseWriter, r *http.Request) {
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
-	var d Prescription
-	err := decoder.Decode(&d)
+	var prescriptionList Prescriptions
+	err := decoder.Decode(&prescriptionList)
 	if err != nil {
 		panic(err)
 	}
 	defer r.Body.Close()
+	for _, d := range prescriptionList {
+		// generate new randomly generated UUID
+		prescriptionUUID, err := gocql.RandomUUID()
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	// generate new randomly generated UUID
-	prescriptionUUID, err := gocql.RandomUUID()
-	if err != nil {
-		log.Fatal(err)
+		doctorName := d.DoctorName
+		doctorUUID := d.DoctorUUID
+		drug := d.Drug
+		endDate := d.EndDate
+		instructions := d.Instructions
+		patientUUID := d.PatientUUID
+		startDate := d.StartDate
+
+		log.Printf("Created new prescription: %s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t",
+			doctorName, doctorUUID, drug, endDate, instructions, patientUUID,
+			prescriptionUUID, startDate)
+
+		// insert new prescription entry
+		if err := session.Query(`INSERT INTO prescriptions (doctorName, doctorUUID,
+			drug, endDate, instructions, patientUUID, prescriptionUUID, startDate)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, doctorName, doctorUUID, drug, endDate,
+			instructions, patientUUID, prescriptionUUID, startDate).Exec(); err != nil {
+			log.Fatal(err)
+		}
 	}
-
-	doctorName := d.DoctorName
-	doctorUUID := d.DoctorUUID
-	drug := d.Drug
-	endDate := d.EndDate
-	instructions := d.Instructions
-	patientUUID := d.PatientUUID
-	startDate := d.StartDate
-
-	log.Printf("Created new prescription: %s\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t",
-		doctorName, doctorUUID, drug, endDate, instructions, patientUUID,
-		prescriptionUUID, startDate)
-
-	// insert new prescription entry
-	if err := session.Query(`INSERT INTO prescriptions (doctorName, doctorUUID,
-		drug, endDate, instructions, patientUUID, prescriptionUUID, startDate)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, doctorName, doctorUUID, drug, endDate,
-		instructions, patientUUID, prescriptionUUID, startDate).Exec(); err != nil {
-		log.Fatal(err)
-	}
-
 	// send success response
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
