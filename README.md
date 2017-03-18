@@ -274,6 +274,29 @@ HTTP 200 Found
 ```
 -------------------------------------------------------
 
+GET /doctors
+
+**Retrieves a list of all a clinics doctors**
+
+Response:
+
+HTTP 200 Found
+
+```json
+[
+{
+  "doctorUUID": "556d9f18-829b-4011-a451-df571b369111",
+  "name": "Anoosh Gilliam",
+  "phoneNumber": "555-222-1111",
+  "primaryFacility": "address",
+  "primarySpeciality": "Liver",
+  "gender": "Female"
+}
+]
+```
+-------------------------------------------------------
+
+
 POST /doctors
 
 **Create a new doctor profile**

@@ -970,6 +970,52 @@ func DoctorGet(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
+Returns a list of all doctors
+Method: GET
+Endpoint: /doctors
+*/
+func DoctorListGet(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Get all doctors of current clinic
+	iter := session.Query("SELECT * FROM doctors").Consistency(gocql.One).Iter()
+
+	doctorList := make([]Doctor, iter.NumRows())
+	i := 0
+	var doctorUUID gocql.UUID
+	var name string
+	var phoneNumber string
+	var primaryFacility string
+	var primarySpecialty string
+	var gender string
+
+	// doctors found
+	if iter.NumRows() > 0 {
+		log.Printf("Scheduled appointments found")
+
+		for iter.Scan(&doctorUUID, &gender, &name, &phoneNumber, &primaryFacility,
+			&primarySpecialty) {
+			doctorList[i] = Doctor{DoctorUUID: doctorUUID,
+			Name: name, Phone: phoneNumber, PrimaryFacility: primaryFacility,
+			PrimarySpecialty: primarySpecialty, Gender: gender}
+			i++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(doctorList); err != nil {
+		panic(err)
+	}
+}
+
+/*
 Returns a list of prescriptions for a specific patient
 Method: GET
 Endpoint: /prescriptions/patientuuid/{patientuuid}
