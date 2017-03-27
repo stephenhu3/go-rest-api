@@ -64,12 +64,13 @@ CREATE TABLE doctors (
 );
 
 CREATE TABLE users (
-	userName text,
-	passWord text,
+	username text,
+	salt text,
+	saltedHash text,
 	userUUID uuid,
 	role text,
 	name text,
-	PRIMARY KEY (userName, passWord)
+	PRIMARY KEY (username)
 );
 CREATE INDEX usersUserUUID ON emr.users (userUUID);
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/gocql/gocql"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -21,7 +23,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 // Added JSON config file and parser to read from, but removed for demo
 const UIAddr = "http://192.168.1.64:3000"
 const CASSDB = "127.0.0.1"
-
 
 func PreFlight(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", "0")
@@ -33,6 +34,7 @@ func PreFlight(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	// json.NewEncoder(w).Encode()
 }
+
 /*
 Validates a user credentials
 Method: POST
@@ -51,17 +53,48 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	userName := r.Form["userName"][0]
-	passWord := r.Form["passWord"][0]
+	username := r.Form["username"][0]
+	password := r.Form["password"][0]
+	var salt string
+	var saltedHash string
 
+	if err := session.Query(`SELECT salt, saltedHash FROM users
+	WHERE username = ?`, username).Consistency(gocql.One).
+		Scan(&salt, &saltedHash); err != nil {
+		// Username doesn't exist, but return ambiguous error to user
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusUnauthorized,
+			Message: "Incorrect username or password"})
+		log.Printf("Incorrect username or password")
+		return
+	}
+
+	// compare hash(salt + attempted password) with saltedHash
+	passwordPlaintext := append([]byte(salt), password...)
+
+	if err := bcrypt.CompareHashAndPassword([]byte(saltedHash),
+		passwordPlaintext); err != nil {
+		// incorrect password, but return ambiguous error to user
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(Status{Code: http.StatusUnauthorized,
+			Message: "Incorrect username or password"})
+		log.Printf("Incorrect username or password")
+		return
+	}
+
+	// login successful, so make second query to get desired values
 	var userUUID gocql.UUID
 	var role string
 	var name string
 
-	if err := session.Query(`SELECT userUUID, role, name FROM users WHERE userName = ?
-		AND passWord = ?`, userName, passWord).Consistency(gocql.One).Scan(&userUUID,
-		&role, &name); err != nil {
-		// Incorrect username or password
+	if err := session.Query(`SELECT userUUID, role, name FROM users
+	WHERE username = ?`, username, password).Consistency(gocql.One).Scan(
+		&userUUID, &role, &name); err != nil {
+		// any other error occurred
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -76,8 +109,7 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode( User{ UserUUID: userUUID, Role: role, Name: name } );
-	err != nil {
+	if err := json.NewEncoder(w).Encode(User{UserUUID: userUUID, Role: role, Name: name}); err != nil {
 		panic(err)
 	}
 }
@@ -124,8 +156,7 @@ func UserGet(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode( User{ UserUUID: userUUID, Role: role, Name: name } );
-		err != nil {
+		if err := json.NewEncoder(w).Encode(User{UserUUID: userUUID, Role: role, Name: name}); err != nil {
 			panic(err)
 		}
 	}
@@ -157,16 +188,33 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	userName := a.UserName
-	passWord := a.PassWord
 
-	log.Printf("Created new user: %s\t%s\t%s\t",
-		userName, passWord, userUUID)
+	// randomly generated 16 bytes salt
+	salt := make([]byte, 16)
+	_, saltErr := rand.Read(salt)
+	if saltErr != nil {
+		log.Fatal(err)
+	}
+
+	username := a.Username
+	password := a.Password
+	role := a.Role
+	name := a.Name
+
+	// store salt and salted hash in DB
+	saltedHash, err := bcrypt.GenerateFromPassword(append(salt, password...),
+		bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("Created new user: %s\t%s\t%s\t%s\t",
+		username, role, name, userUUID)
 
 	// insert new user entry
-	if err := session.Query(`INSERT INTO users (userName,
-		passWord, userUUID) VALUES (?, ?, ?)`, userName, passWord,
-		userUUID).Exec(); err != nil {
+	if err := session.Query(`INSERT INTO users (username,
+		salt, saltedHash, userUUID, role, name) VALUES (?, ?, ?, ?, ?, ?)`,
+		username, salt, saltedHash, userUUID, role, name).Exec(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -175,7 +223,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]gocql.UUID{"userUUID":userUUID})
+	json.NewEncoder(w).Encode(map[string]gocql.UUID{"userUUID": userUUID})
 }
 
 /*
@@ -818,7 +866,6 @@ func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
 		panic("Improper URI")
 	}
@@ -1001,8 +1048,8 @@ func DoctorListGet(w http.ResponseWriter, r *http.Request) {
 		for iter.Scan(&doctorUUID, &gender, &name, &phoneNumber, &primaryFacility,
 			&primarySpecialty) {
 			doctorList[i] = Doctor{DoctorUUID: doctorUUID,
-			Name: name, Phone: phoneNumber, PrimaryFacility: primaryFacility,
-			PrimarySpecialty: primarySpecialty, Gender: gender}
+				Name: name, Phone: phoneNumber, PrimaryFacility: primaryFacility,
+				PrimarySpecialty: primarySpecialty, Gender: gender}
 			i++
 		}
 	}
@@ -1055,7 +1102,7 @@ func PrescriptionsGetByPatient(w http.ResponseWriter, r *http.Request) {
 		log.Printf("prescriptions found")
 
 		for iter.Scan(&patientUUID, &endDate, &prescriptionUUID, &doctorName,
-			&doctorUUID, &drug, &instructions, &startDate){
+			&doctorUUID, &drug, &instructions, &startDate) {
 			prescriptionList[i] = Prescription{
 				DoctorName: doctorName, DoctorUUID: doctorUUID, Drug: drug,
 				EndDate: endDate, Instructions: instructions, PatientUUID: patientUUID,
@@ -1166,9 +1213,8 @@ func NotificationCreate(w http.ResponseWriter, r *http.Request) {
 	// insert new notification entry
 	if err := session.Query(`INSERT INTO notifications (receiverUUID, date, notificationUUID,
 		message, senderName, senderUUID) VALUES (?, ?, ?, ?, ?, ?)`,
-		receiverUUID, date, notificationUUID, message, senderName, senderUUID).Exec();
-		err != nil {
-			log.Fatal(err)
+		receiverUUID, date, notificationUUID, message, senderName, senderUUID).Exec(); err != nil {
+		log.Fatal(err)
 	}
 
 	// send success response
@@ -1178,7 +1224,6 @@ func NotificationCreate(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
 		Message: "Notification entry successfully created."})
 }
-
 
 /*
 Returns a list of notifications for a specific doctor
@@ -1216,10 +1261,10 @@ func NotificationsGetByDoctor(w http.ResponseWriter, r *http.Request) {
 	if iter.NumRows() > 0 {
 		log.Printf("Notifications found")
 
-		for iter.Scan(&receiverUUID, &date, &message, &senderUUID, &senderName){
-			notiList[i] = Notification {
+		for iter.Scan(&receiverUUID, &date, &message, &senderUUID, &senderName) {
+			notiList[i] = Notification{
 				Date: date, Messsage: message,
-				ReceiverUUID: receiverUUID, SenderName: senderName, SenderUUID: senderUUID }
+				ReceiverUUID: receiverUUID, SenderName: senderName, SenderUUID: senderUUID}
 			i++
 		}
 	}
@@ -1283,7 +1328,7 @@ func DocumentCreate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusCreated)
 	// returns the created documentuuid on success
-	json.NewEncoder(w).Encode(map[string]gocql.UUID{"documentuuid":documentUUID})
+	json.NewEncoder(w).Encode(map[string]gocql.UUID{"documentuuid": documentUUID})
 }
 
 /*
@@ -1400,7 +1445,7 @@ func DocumentListGetByPatient(w http.ResponseWriter, r *http.Request) {
 	i := 0
 	var documentUUID gocql.UUID
 	var patientUUID gocql.UUID
-	var filename     string
+	var filename string
 	var dateUploaded int
 
 	// documents found
@@ -1409,8 +1454,8 @@ func DocumentListGetByPatient(w http.ResponseWriter, r *http.Request) {
 
 		for iter.Scan(&documentUUID, &dateUploaded, &filename, &patientUUID) {
 			docuList[i] = Document{
-				 DocumentUUID: documentUUID, PatientUUID: patientUUID, Filename: filename,
-				 DateUploaded: dateUploaded}
+				DocumentUUID: documentUUID, PatientUUID: patientUUID, Filename: filename,
+				DateUploaded: dateUploaded}
 			i++
 		}
 	}
