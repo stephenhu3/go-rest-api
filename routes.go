@@ -49,6 +49,12 @@ var routes = Routes{
 		PatientGet,
 	},
 	Route{
+		"PatientListGet",
+		"GET",
+		"/patients/all",
+		PatientListGet,
+	},
+	Route{
 		"PatientGetByDoctor",
 		"GET",
 		"/patients/doctoruuid/{doctoruuid}",

@@ -47,6 +47,16 @@ HTTP 201 Created
   "message": "Patient entry successfully created."
 }
 ```
+
+HTTP 400 BadRequest
+
+```json
+{
+  "code": 400,
+  "message": "Patient Not Created."
+}
+```
+
 -------------------------------------------------------
 GET /patients/patientuuid/{patientuuid}
 
@@ -69,7 +79,38 @@ HTTP 302 Found
   "phoneNumber": "483-555-5123"
 }
 ```
+
 -------------------------------------------------------
+
+GET /patients/all
+
+**Retrieves a list of all patients in clinic**
+
+Response:
+
+HTTP 302 Found
+
+```json
+[
+  {
+    "patientUUID": "e572fe98-4662-47f7-930c-cf4f7d13e26e",
+    "dateOfBirth": 191289600,
+    "gender": "M",
+    "name": "Lamar Odom",
+    "phoneNumber": "483-555-5123"
+  },
+  {
+    "patientUUID": "6c202b83-1759-40e2-b1c8-7566330366d2",
+    "dateOfBirth": 191289600,
+    "gender": "F",
+    "name": "Kelly Lai",
+    "phoneNumber": "483-555-5123"
+  }
+]
+```
+
+-------------------------------------------------------
+
 POST {domain}/futureappointments
 
 **Create a future appointment**

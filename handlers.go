@@ -290,11 +290,17 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		patientUUID, address, bloodType, dateOfBirth, emergencyContact,
 		gender, medicalNumber, name, notes, phone).Exec(); err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusBadRequest)
+		       json.NewEncoder(w).Encode(Status{Code: http.StatusBadRequest,
+		               Message: "Patient Not Created"})
 	}
 
 	// send success response
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
 		Message: "Patient entry successfully created."})
@@ -359,6 +365,51 @@ func PatientGet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
+/*
+Returns a list of all patients in the clinic
+Method: GET
+Endpoint: /patients/all
+*/
+func PatientListGet(w http.ResponseWriter, r *http.Request) {
+	// connect to the cluster
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Get all patients of current clinic
+	iter := session.Query("SELECT * FROM patients").Consistency(gocql.One).Iter()
+
+	patientList := make([]Patient, iter.NumRows())
+	i := 0
+	var patientUUID gocql.UUID
+	var dateOfBirth int
+	var gender string
+	var name string
+	var phone string
+
+	// patients found
+	if iter.NumRows() > 0 {
+		log.Printf("Patients found")
+		for iter.Scan(&patientUUID, nil, nil, &dateOfBirth, nil, &gender, nil,
+			&name, nil, &phone) {
+
+			patientList[i] = Patient{ PatientUUID: patientUUID, DateOfBirth: dateOfBirth,
+				Gender: gender, Name: name, Phone: phone }
+			i++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(patientList); err != nil {
+		panic(err)
+	}
+}
+
 
 /*
 Update a patient entry
