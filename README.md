@@ -331,11 +331,10 @@ POST /login
 **Requires using form body input (postman) or x-www-formurlencoded**
 Request:
 
-```json
-{
-  "userName": "wolverine@xmen.ca",
-  "passWord": "xmen",
-}
+```
+Form Data:
+username:
+password:
 ```
 
 Responses:
@@ -386,8 +385,10 @@ Request:
 
 ```json
 {
-  "userName": "wolverine@xmen.ca",
-  "passWord": "xmen",
+  "username": "wolverine@xmen.ca",
+  "password": "xmen",
+  "role": "patient",
+  "name": "Sally"
 }
 ```
 

@@ -55,8 +55,8 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 
 	username := r.Form["username"][0]
 	password := r.Form["password"][0]
-	var salt string
-	var saltedHash string
+	var salt []byte
+	var saltedHash []byte
 
 	if err := session.Query(`SELECT salt, saltedHash FROM users
 	WHERE username = ?`, username).Consistency(gocql.One).
@@ -67,14 +67,14 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(Status{Code: http.StatusUnauthorized,
 			Message: "Incorrect username or password"})
-		log.Printf("Incorrect username or password")
+		log.Printf("Username not found")
 		return
 	}
 
 	// compare hash(salt + attempted password) with saltedHash
-	passwordPlaintext := append([]byte(salt), password...)
+	passwordPlaintext := append(salt, password...)
 
-	if err := bcrypt.CompareHashAndPassword([]byte(saltedHash),
+	if err := bcrypt.CompareHashAndPassword(saltedHash,
 		passwordPlaintext); err != nil {
 		// incorrect password, but return ambiguous error to user
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -82,7 +82,7 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(Status{Code: http.StatusUnauthorized,
 			Message: "Incorrect username or password"})
-		log.Printf("Incorrect username or password")
+		log.Printf("Incorrect password")
 		return
 	}
 
@@ -92,7 +92,7 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 	var name string
 
 	if err := session.Query(`SELECT userUUID, role, name FROM users
-	WHERE username = ?`, username, password).Consistency(gocql.One).Scan(
+	WHERE username = ?`, username).Consistency(gocql.One).Scan(
 		&userUUID, &role, &name); err != nil {
 		// any other error occurred
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
@@ -100,7 +100,7 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(Status{Code: http.StatusUnauthorized,
 			Message: "Incorrect username or password"})
-		log.Printf("Incorrect username or password")
+		panic(err)
 		return
 	}
 
@@ -202,8 +202,8 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	name := a.Name
 
 	// store salt and salted hash in DB
-	saltedHash, err := bcrypt.GenerateFromPassword(append(salt, password...),
-		bcrypt.DefaultCost)
+	saltedHash, err := bcrypt.GenerateFromPassword(
+		append(salt, password...), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -214,7 +214,8 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	// insert new user entry
 	if err := session.Query(`INSERT INTO users (username,
 		salt, saltedHash, userUUID, role, name) VALUES (?, ?, ?, ?, ?, ?)`,
-		username, salt, saltedHash, userUUID, role, name).Exec(); err != nil {
+		username, salt, saltedHash, userUUID,
+		role, name).Exec(); err != nil {
 		log.Fatal(err)
 	}
 

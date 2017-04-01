@@ -65,8 +65,8 @@ CREATE TABLE doctors (
 
 CREATE TABLE users (
 	username text,
-	salt text,
-	saltedHash text,
+	salt blob,
+	saltedHash blob,
 	userUUID uuid,
 	role text,
 	name text,
