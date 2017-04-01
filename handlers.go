@@ -200,6 +200,27 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	password := a.Password
 	role := a.Role
 	name := a.Name
+	// some control in the URI for user createion
+	// Patient can only create an account if patient entry exist in system
+	// Doctor requires similar functionality but tied to applicatoin access
+	// Not current implmented for doctors
+	verificationKey := a.VerificationKey
+
+	if role == "Patient" {
+		var patientuuid gocql.UUID
+		// if created user is a patient check if paitnet exists
+		if err := session.Query(`SELECT patientuuid FROM users where medicalNumber = ?`,
+			verificationKey).Consistency(gocql.One).Scan(&patientuuid); err != nil {
+			// Patient doesn't exist do not create user entry for this patient
+			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string] bool {"validError": true, "patientError": true})
+			log.Printf("Cannot create patient user entry, patient does not exist")
+			return
+		}
+		userUUID = patientuuid
+	}
 
 	// store salt and salted hash in DB
 	saltedHash, err := bcrypt.GenerateFromPassword(
@@ -211,12 +232,16 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Created new user: %s\t%s\t%s\t%s\t",
 		username, role, name, userUUID)
 
-	// insert new user entry
-	if err := session.Query(`INSERT INTO users (username,
-		salt, saltedHash, userUUID, role, name) VALUES (?, ?, ?, ?, ?, ?)`,
-		username, salt, saltedHash, userUUID,
-		role, name).Exec(); err != nil {
-		log.Fatal(err)
+	if insertSuccess, err := session.Query(`INSERT INTO users (username,
+		salt, saltedHash, userUUID, role, name) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS`,
+		username, salt, saltedHash, userUUID, role, name).ScanCAS(); err != nil || !insertSuccess {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string] bool {"validError": true, "createUserError": true})
+		log.Println(err)
+		log.Printf("Cannot create user exists already")
+		return
 	}
 
 	w.Header().Set("Set-Cookie", "userToken=test; Path=/; HttpOnly")
@@ -224,7 +249,9 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]gocql.UUID{"userUUID": userUUID})
+	if err := json.NewEncoder(w).Encode(User{UserUUID: userUUID, Role: role, Name: name}); err != nil {
+		panic(err)
+	}
 }
 
 /*
@@ -812,17 +839,9 @@ func CompletedAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 	notes := c.Notes
 
 	// var deleteSuccess bool
-	if deleteSuccess, err := session.Query(`DELETE FROM futureappointments WHERE appointmentuuid=? IF EXISTS`,
+	if _, err := session.Query(`DELETE FROM futureappointments WHERE appointmentuuid=? IF EXISTS`,
 		appointmentUuid).ScanCAS(); err != nil {
 		log.Fatal(err)
-	} else if deleteSuccess {
-		// generate new randomly generated UUID (version 4)
-		// Any appointments within futureappointments is removed once a completedappointment
-		// entry is created to replace the appointment
-		appointmentUuid, err = gocql.RandomUUID()
-		if err != nil {
-			log.Fatal(err)
-		}
 	}
 
 	log.Printf("Updating appointment: %s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\t",
@@ -932,13 +951,8 @@ func DoctorCreate(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
-
-	// generate new randomly generated UUID (version 4)
-	doctorUUID, err := gocql.RandomUUID()
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	
+	doctorUUID := d.DoctorUUID
 	name := d.Name
 	phoneNumber := d.Phone
 	prFacility := d.PrimaryFacility
@@ -959,6 +973,7 @@ func DoctorCreate(w http.ResponseWriter, r *http.Request) {
 
 	// send success response
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
 		Message: "Doctor entry successfully created."})
