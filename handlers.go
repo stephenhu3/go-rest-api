@@ -1382,6 +1382,8 @@ func DocumentGet(w http.ResponseWriter, r *http.Request) {
 
 		fopen, err := os.Open(filename)
 		defer fopen.Close()
+		// remove file from local storage after sending to client
+		defer os.Remove(filename)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.WriteHeader(http.StatusNotFound)
