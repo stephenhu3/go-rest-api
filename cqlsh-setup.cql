@@ -21,7 +21,7 @@ CREATE TABLE patients (
 	notes text,
 	PRIMARY KEY (patientUUID)
 );
-
+CREATE INDEX patientsMedicalNumber ON emr.patients (medicalNumber);
 
 CREATE TABLE completedAppointments (
 	appointmentUUID uuid,

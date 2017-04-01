@@ -195,13 +195,14 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	if role == "Patient" {
 		var patientuuid gocql.UUID
 		// if created user is a patient check if paitnet exists
-		if err := session.Query(`SELECT patientuuid FROM users where medicalNumber = ?`,
-			verificationKey).Consistency(gocql.One).Scan(&patientuuid); err != nil {
+		if err := session.Query(`SELECT patientuuid, name FROM patients where medicalNumber = ?`,
+			verificationKey).Consistency(gocql.One).Scan(&patientuuid, &name); err != nil {
 			// Patient doesn't exist do not create user entry for this patient
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string] bool {"validError": true, "patientError": true})
+			log.Println(err)
 			log.Printf("Cannot create patient user entry, patient does not exist")
 			return
 		}
