@@ -51,8 +51,8 @@ func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	userName := r.Form["userName"][0]
-	passWord := r.Form["passWord"][0]
+	userName := r.Form["username"][0]
+	passWord := r.Form["password"][0]
 
 	var userUUID gocql.UUID
 	var role string
@@ -674,6 +674,7 @@ func FutureAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 
 	// send success response
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(Status{Code: http.StatusCreated,
 		Message: "Appointment entry successfully created."})
@@ -763,17 +764,9 @@ func CompletedAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 	notes := c.Notes
 
 	// var deleteSuccess bool
-	if deleteSuccess, err := session.Query(`DELETE FROM futureappointments WHERE appointmentuuid=? IF EXISTS`,
+	if _, err := session.Query(`DELETE FROM futureappointments WHERE appointmentuuid=? IF EXISTS`,
 		appointmentUuid).ScanCAS(); err != nil {
 		log.Fatal(err)
-	} else if deleteSuccess {
-		// generate new randomly generated UUID (version 4)
-		// Any appointments within futureappointments is removed once a completedappointment
-		// entry is created to replace the appointment
-		appointmentUuid, err = gocql.RandomUUID()
-		if err != nil {
-			log.Fatal(err)
-		}
 	}
 
 	log.Printf("Updating appointment: %s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\t",
@@ -928,12 +921,7 @@ func DoctorCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// generate new randomly generated UUID (version 4)
-	doctorUUID, err := gocql.RandomUUID()
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	doctorUUID := d.DoctorUUID
 	name := d.Name
 	phoneNumber := d.Phone
 	prFacility := d.PrimaryFacility
