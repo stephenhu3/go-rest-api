@@ -860,9 +860,9 @@ func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
 /*
 Delete selected appointment
 Method: DELETE
-Endpoint: /appointments/appointmentuuid/{appointmentuuid}
+Endpoint: /futureappointments/appointmentuuid/{appointmentuuid}
 */
-func AppointmentDelete(w http.ResponseWriter, r *http.Request) {
+func FutureAppointmentDelete(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = "emr"
@@ -876,27 +876,28 @@ func AppointmentDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var searchUUID = strings.Split(r.RequestURI, "/")[3]
-	
-	var query = "DELETE FROM ? WHERE appointmentuuid=? IF EXISTS"
+
 	// Tries to delete from futureAppointments
-	if _, err := session.Query(query, "completedAppointments",
-		searchUUID).ScanCAS(); err != nil {
-		log.Fatal(err)
-	}
-	// Tries to delete from completedAppointments
-	if _, err := session.Query(query, "futureAppointments",
-		searchUUID).ScanCAS(); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Printf("Delete on: %s\t", searchUUID)
-
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
-			Message: "Not Found"}); err != nil {
-		panic(err)
+	if deleteSuccess, err := session.Query("DELETE FROM futureAppointments WHERE appointmentuuid=? IF EXISTS",
+		searchUUID).ScanCAS(); err != nil || !deleteSuccess {
+		log.Println(deleteSuccess)
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusNotFound)
+		if err := json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
+				Message: "Delete target not found"}); err != nil {
+			panic(err)
+		}
+	} else {
+		log.Println(deleteSuccess)
+		log.Printf("Delete on: %s\t", searchUUID)
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(Status{Code: http.StatusOK,
+				Message: "Delete Success"}); err != nil {
+			panic(err)
+		}
 	}
 }
 

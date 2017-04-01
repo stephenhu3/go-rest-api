@@ -114,6 +114,30 @@ HTTP 302 Found
 }
 ```
 -------------------------------------------------------
+DELETE /futureappointments/appointmentuuid/{appointmentuuid}
+
+**Deletes a futureappoitnment entry**
+
+Response:
+
+HTTP 200 Found
+
+```json
+{
+  "code": 200,
+  "message": "Delete Success"
+}
+```
+
+```json
+
+HTTP 401 NotFound
+{
+  "code": 401,
+  "message": "Delete target not found"
+}
+```
+-------------------------------------------------------
 POST {domain}/completedappointments
 
 **Create a completed appointment entry**
