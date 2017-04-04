@@ -55,6 +55,12 @@ var routes = Routes{
 		PatientGetByDoctor,
 	},
 	Route{
+		"FutureAppointmentDelete",
+		"DELETE",
+		"/futureappointments/appointmentuuid/{appointmentuuid}",
+		FutureAppointmentDelete,
+	},
+	Route{
 		"FutureAppointmentCreate",
 		"POST",
 		"/futureappointments",
