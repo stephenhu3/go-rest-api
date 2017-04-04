@@ -9,6 +9,11 @@ cd $GOPATH/src/
 go install github.com/{username}/go-rest
 ```
 
+Set up Database:
+```
+cqlsh --request-timeout 120 localhost < cqlsh-setup.cql
+```
+
 Run the program:
 ```
 $GOPATH/bin/go-rest
@@ -96,7 +101,7 @@ HTTP 201 Created
 }
 ```
 -------------------------------------------------------
-GET /futureappointments/search?appointmentuuid=:appointmentuuid
+GET /futureappointments/search?appointmentuuid={appointmentuuid}
 
 **Retrieves a scheduled appointment record**
 

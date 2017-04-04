@@ -201,7 +201,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string] bool {"validError": true, "patientError": true})
+			json.NewEncoder(w).Encode(map[string]bool{"validError": true, "patientError": true})
 			log.Println(err)
 			log.Printf("Cannot create patient user entry, patient does not exist")
 			return
@@ -225,7 +225,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string] bool {"validError": true, "createUserError": true})
+		json.NewEncoder(w).Encode(map[string]bool{"validError": true, "createUserError": true})
 		log.Println(err)
 		log.Printf("Cannot create user exists already")
 		return
@@ -283,9 +283,9 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 		medicalNumber, name, notes, phone)
 
 	// insert new patient entry
-	if err := session.Query(`INSERT INTO patients (patientUuid, 
-		address, bloodType, dateOfBirth, emergencyContact, gender, 
-		medicalNumber, name, notes, phone ) 
+	if err := session.Query(`INSERT INTO patients (patientUuid,
+		address, bloodType, dateOfBirth, emergencyContact, gender,
+		medicalNumber, name, notes, phone )
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		patientUUID, address, bloodType, dateOfBirth, emergencyContact,
 		gender, medicalNumber, name, notes, phone).Exec(); err != nil {
@@ -746,7 +746,7 @@ func FutureAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 /*
 Search for info on a future appointment
 Method: GET
-Endpoint: /futureappointments/search?appointmentuuid=:appointmentuuid
+Endpoint: /futureappointments/search?appointmentuuid={appointmentuuid}
 */
 func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
@@ -932,7 +932,6 @@ func FutureAppointmentDelete(w http.ResponseWriter, r *http.Request) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
 		panic("Improper URI")
 	}
@@ -947,7 +946,7 @@ func FutureAppointmentDelete(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusNotFound)
 		if err := json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
-				Message: "Delete target not found"}); err != nil {
+			Message: "Delete target not found"}); err != nil {
 			panic(err)
 		}
 	} else {
@@ -957,7 +956,7 @@ func FutureAppointmentDelete(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(Status{Code: http.StatusOK,
-				Message: "Delete Success"}); err != nil {
+			Message: "Delete Success"}); err != nil {
 			panic(err)
 		}
 	}
