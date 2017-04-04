@@ -514,7 +514,7 @@ HTTP 201 Created
 -------------------------------------------------------
 GET /prescriptions/patientuuid/{patientuuid}
 
-**Retrieves a list of a patients prescriptions **
+**Retrieves a list of a patients prescriptions**
 
 Response:
 

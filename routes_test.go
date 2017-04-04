@@ -1129,3 +1129,146 @@ func TestDeleteFutureAppointmentHandler(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestPrescriptionGetByPatient(t *testing.T) {
+	var patientUUID gocql.UUID
+	var doctorUUID gocql.UUID
+	var prescriptionUUID gocql.UUID
+	var prescriptionUUID2 gocql.UUID
+	var err error
+
+	// Doctor info
+	doctorUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := "Test Doctor"
+	phone := "123-456-7890"
+	primaryFacility := "FakeAddress1"
+	primarySpeciality := "Faker1"
+	gender := "Male"
+
+	// Patient Info
+	patientUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := "FakeAddress"
+	bloodType := "O"
+	dateOfBirth := "191289601"
+	emergencyContact := "415-555-8271"
+	patientGender := "M"
+	medicalNumber := "151511517"
+	patientName := "Brown Drey"
+	notes := "Broken Legs"
+	patientPhone := "151-454-7878"
+
+	// Prescription Info
+	prescriptionUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	endDate := 191389600
+
+	prescriptionUUID2, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	endDate2 := 200000000
+
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Insert these entries directly into the db
+	session.Query(`INSERT INTO doctors (doctorUUID, name, phone, primaryFacility,
+				primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID, name, phone,
+		primaryFacility, primarySpeciality, gender).Exec()
+
+	session.Query(`INSERT INTO patients (patientUuid, address, bloodType,
+				dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, patientUUID, address, bloodType,
+		dateOfBirth, emergencyContact, patientGender, medicalNumber, patientName, notes,
+		patientPhone).Exec()
+
+	err = session.Query(`INSERT INTO prescriptions (patientUUID, prescriptionUUID,
+			doctorUUID, doctorName, drug, startDate, endDate, instructions) VALUES (?,?,?,?,?,?,?,?)`,
+		patientUUID, prescriptionUUID, doctorUUID, nil, "Wise Drugs", 18019111, endDate, nil).Exec()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = session.Query(`INSERT INTO prescriptions (patientUUID, prescriptionUUID,
+				doctorUUID, doctorName, drug, startDate, endDate, instructions) VALUES (?,?,?,?,?,?,?,?)`,
+		patientUUID, prescriptionUUID2, doctorUUID, nil, "Bad Drugs", 18011111, endDate2, nil).Exec()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Get the appointments for patient Brown Drey
+	var bb bytes.Buffer
+	bb.WriteString("/prescriptions/patientuuid/")
+	bb.WriteString(patientUUID.String())
+	endpoint := bb.String()
+	fmt.Println(endpoint)
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+
+	// Check if any errors occured when creating the new request
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Must manually set the endpoint URI for some unknown reason.
+	req.RequestURI = endpoint
+
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(PrescriptionsGetByPatient)
+	handler.ServeHTTP(rec, req)
+
+	// Get the status code of the page and check if it is OK
+	status := rec.Code
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusOK)
+	}
+
+	// Check if the response's uuid is correct (Expected value).
+	if !strings.Contains(rec.Body.String(), (`"DoctorUUID":"` + doctorUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct doctorUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"PrescriptionUUID":"` + prescriptionUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain a correct prescription. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"PrescriptionUUID":"` + prescriptionUUID2.String() + `"`)) {
+		t.Errorf("The response message did not contain a correct prescription. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the patientUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+
+	// Clean up the DB
+	e := session.Query("DELETE FROM patients where patientuuid = ?", patientUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM doctors where doctoruuid = ?", doctorUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query(`DELETE FROM prescriptions where prescriptionUUID = ? and
+			patientUUID = ? and endDate = ?`, prescriptionUUID, patientUUID, endDate).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	e = session.Query(`DELETE FROM prescriptions where prescriptionUUID = ? and
+			patientUUID = ? and endDate = ?`, prescriptionUUID2, patientUUID, endDate2).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+}
