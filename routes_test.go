@@ -268,7 +268,7 @@ func TestDoctorCreateHandler(t *testing.T) {
 	numDoctorsBefore := session.Query("SELECT * FROM doctors").Iter().NumRows()
 
 	// Make the reader using the json string
-	jsonStringReader := strings.NewReader(`{
+	jsonStringReader := strings.NewReader(`{"doctorUUID": "00000000-1111-2222-3333-444444444444",
 																				  "name": "Doctor Name",
 																				  "phoneNumber": "111-333-2222",
 																				  "primaryFacility": "address",
@@ -300,16 +300,20 @@ func TestDoctorCreateHandler(t *testing.T) {
 	if numDoctorsAfter != numDoctorsBefore+1 {
 		t.Errorf("The number of doctors did not change")
 	}
+	session.Query("DELETE FROM doctors WHERE doctoruuid = 00000000-1111-2222-3333-444444444444").Exec()
 }
 
 func TestDoctorGetHandler(t *testing.T) {
-	// Variables used for storing the patient
-	var doctorUUID gocql.UUID
-	var name string
-	var phone string
-	var primaryFacility string
-	var primarySpeciality string
-	var gender string
+	// Doctor info
+	doctorUUID, err := gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := "Test Doctor"
+	phone := "123-456-7890"
+	primaryFacility := "FakeAddress1"
+	primarySpeciality := "Faker1"
+	gender := "Male"
 
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
@@ -319,15 +323,15 @@ func TestDoctorGetHandler(t *testing.T) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	// Get the first patient in the database
-	session.Query("SELECT * FROM doctors").Consistency(gocql.One).Scan(&doctorUUID, &gender,
-		&name, &phone, &primaryFacility, &primarySpeciality)
+	// Insert these entries directly into the db
+	session.Query(`INSERT INTO doctors (doctorUUID, name, phone, primaryFacility,
+			primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID, name, phone,
+		primaryFacility, primarySpeciality, gender).Exec()
 
 	var buff bytes.Buffer
 	buff.WriteString("/doctors/doctoruuid/")
 	buff.WriteString(doctorUUID.String())
 	endpoint := buff.String()
-	fmt.Println(endpoint)
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 
@@ -367,7 +371,8 @@ func TestDoctorGetHandler(t *testing.T) {
 		t.Errorf("The response message did not contain the correct facility. \n The returned message is: \n %v", rec.Body.String())
 	}
 
-	e := session.Query("DELETE FROM doctors where doctoruuid = ?", doctorUUID).Exec()
+	fmt.Println("Deleting Doctor UUID :", doctorUUID.String())
+	e := session.Query("DELETE FROM doctors WHERE doctoruuid = ?", doctorUUID).Exec()
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -486,6 +491,109 @@ func TestDoctorListGetHandler(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
+}
+
+func TestPrescriptionCreate(t *testing.T) {
+	// Manually add in a fake patient and doctor
+	var doctorUUID1 gocql.UUID
+	var name1 string
+	var phone1 string
+	var primaryFacility1 string
+	var primarySpeciality1 string
+	var gender1 string
+
+	var patientUUID gocql.UUID
+
+	var err error
+
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	// This keyspace can be changed later for tests (i.e. emr_test )
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Doctor info
+	doctorUUID1, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name1 = "Test Doctor"
+	phone1 = "123-456-7890"
+	primaryFacility1 = "FakeAddress1"
+	primarySpeciality1 = "Faker1"
+	gender1 = "Male"
+
+	// Patient Info
+	patientUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := "FakeAddress2"
+	bloodType := "O"
+	dateOfBirth := "191289601"
+	emergencyContact := "415-555-8271"
+	gender := "M"
+	medicalNumber := "151511517"
+	name := "Brown Drey"
+	notes := "Broken Legs"
+	phone := "151-454-7878"
+
+	// Insert these entries directly into the db
+	session.Query(`INSERT INTO doctors (doctorUUID, name, phone, primaryFacility,
+		primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID1, name1, phone1,
+		primaryFacility1, primarySpeciality1, gender1).Exec()
+
+	session.Query(`INSERT INTO patients (patientUuid, address, bloodType,
+		dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, patientUUID, address, bloodType,
+		dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone).Exec()
+
+	var bb bytes.Buffer
+	bb.WriteString(`[{"patientUUID":"`)
+	bb.WriteString(patientUUID.String())
+	bb.WriteString(`","doctorUUID": "`)
+	bb.WriteString(doctorUUID1.String())
+	bb.WriteString(`","doctor,omitempty": "Dr Ramoray",
+			"drug": "Drug Name",
+			"startDate": 191289600,
+			"endDate": 191389600,
+			"instructions,omitempty": "take twice daily"
+		}]`)
+	entry := bb.String()
+	// Make the reader using the json string
+	jsonStringReader := strings.NewReader(entry)
+
+	// Create the request with json as body
+	req, err := http.NewRequest("POST", "/prescription", jsonStringReader)
+
+	// Check if any errors occured when creating the new request
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(PrescriptionCreate)
+	handler.ServeHTTP(rec, req)
+
+	// Get the status code of the page and check if it is OK
+	status := rec.Code
+	if status != http.StatusCreated {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusCreated)
+	}
+
+	// CLean up
+	e := session.Query("DELETE FROM doctors where doctoruuid = ?", doctorUUID1).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM patients where patientuuid = ?", patientUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+
 }
 
 func TestFutureAppointmentCreateHandler(t *testing.T) {
@@ -739,6 +847,139 @@ func TestAppointmentGetByDoctorHandler(t *testing.T) {
 		t.Errorf("The response message did not contain the correct doctorUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), "1cf1dca9-4a4a-4f47-8201-401bbe0fb927")
 	}
 }
+func TestAppointmentGetByPatientHandler(t *testing.T) {
+	var patientUUID gocql.UUID
+	var appointmentUUID gocql.UUID
+	var appointmentUUID2 gocql.UUID
+	var doctorUUID gocql.UUID
+	var err error
+
+	// Doctor info
+	doctorUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := "Test Doctor"
+	phone := "123-456-7890"
+	primaryFacility := "FakeAddress1"
+	primarySpeciality := "Faker1"
+	gender := "Male"
+
+	// Patient Info
+	patientUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := "FakeAddress"
+	bloodType := "O"
+	dateOfBirth := "191289601"
+	emergencyContact := "415-555-8271"
+	patientGender := "M"
+	medicalNumber := "151511517"
+	patientName := "Brown Drey"
+	notes := "Broken Legs"
+	patientPhone := "151-454-7878"
+
+	// Appointments Info
+	appointmentUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dateScheduled := 1000
+	appointmentNotes := "Sample"
+
+	// Appointments Info
+	appointmentUUID2, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dateScheduled2 := 2022
+	appointmentNotes2 := "Sample2"
+
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Insert these entries directly into the db
+	session.Query(`INSERT INTO doctors (doctorUUID, name, phone, primaryFacility,
+			primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID, name, phone,
+		primaryFacility, primarySpeciality, gender).Exec()
+
+	session.Query(`INSERT INTO patients (patientUuid, address, bloodType,
+			dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, patientUUID, address, bloodType,
+		dateOfBirth, emergencyContact, patientGender, medicalNumber, patientName, notes,
+		patientPhone).Exec()
+
+	session.Query(`INSERT INTO futureappointments (appointmentUUID, datescheduled,
+		doctoruuid, notes, patientuuid) VALUES (?,?,?,?,?)`,
+		appointmentUUID, dateScheduled, doctorUUID, appointmentNotes, patientUUID).Exec()
+
+	session.Query(`INSERT INTO futureappointments (appointmentUUID, datescheduled,
+		doctoruuid, notes, patientuuid) VALUES (?,?,?,?,?)`,
+		appointmentUUID2, dateScheduled2, doctorUUID, appointmentNotes2, patientUUID).Exec()
+
+	// Get the appointments for patient Brown Drey
+	var bb bytes.Buffer
+	bb.WriteString("/appointments/patientuuid/")
+	bb.WriteString(patientUUID.String())
+
+	endpoint := bb.String()
+	fmt.Println(endpoint)
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+
+	// Check if any errors occured when creating the new request
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Must manually set the endpoint URI for some unknown reason.
+	req.RequestURI = endpoint
+
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(AppointmentGetByPatient)
+	handler.ServeHTTP(rec, req)
+
+	// Get the status code of the page and check if it is OK
+	status := rec.Code
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusOK)
+	}
+
+	// Check if the response's uuid is correct (Expected value).
+	if !strings.Contains(rec.Body.String(), (`"doctorUUID":"` + doctorUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct doctorUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"notes":"` + appointmentNotes + `"`)) {
+		t.Errorf("The response message did not contain a correct note. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the patientUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+
+	// Clean up the DB
+	e := session.Query("DELETE FROM patients where patientuuid = ?", patientUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM doctors where doctoruuid = ?", doctorUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM futureappointments where appointmentuuid = ?", appointmentUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM futureappointments where appointmentuuid = ?", appointmentUUID2).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+}
 
 func TestPatientGetByDoctorHandler(t *testing.T) {
 	var patientUUID gocql.UUID
@@ -783,75 +1024,87 @@ func TestPatientGetByDoctorHandler(t *testing.T) {
 }
 
 func TestDeleteFutureAppointmentHandler(t *testing.T) {
-	// Variables for Appointments
-	var appointmentUUID gocql.UUID
 	var patientUUID gocql.UUID
+	var appointmentUUID gocql.UUID
+	var doctorUUID gocql.UUID
+
+	var e error
+
+	// Doctor info
+	doctorUUID, e = gocql.RandomUUID()
+	if e != nil {
+		t.Fatal(e)
+	}
+	name := "Test Doctor"
+	phone := "123-456-7890"
+	primaryFacility := "FakeAddress1"
+	primarySpeciality := "Faker1"
+	gender := "Male"
+
+	// Patient Info
+	patientUUID, e = gocql.RandomUUID()
+	if e != nil {
+		t.Fatal(e)
+	}
+	address := "FakeAddress"
+	bloodType := "O"
+	dateOfBirth := "191289601"
+	emergencyContact := "415-555-8271"
+	patientGender := "M"
+	medicalNumber := "151511517"
+	patientName := "Brown Drey"
+	notes := "Broken Legs"
+	patientPhone := "151-454-7878"
+
+	// Appointments Info
+	appointmentUUID, e = gocql.RandomUUID()
+	if e != nil {
+		t.Fatal(e)
+	}
+	dateScheduled := 1000
+	appointmentNotes := "Sample"
 
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
-	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = "emr"
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	// Get a patient to create with
-	patientErr := session.Query("SELECT * FROM patients").Consistency(gocql.One).Scan(&patientUUID,
-		nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	// Insert these entries directly into the db
+	session.Query(`INSERT INTO doctors (doctorUUID, name, phone, primaryFacility,
+			primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID, name, phone,
+		primaryFacility, primarySpeciality, gender).Exec()
 
-	if patientErr != nil {
-		t.Fatal(patientErr)
-	}
+	session.Query(`INSERT INTO patients (patientUuid, address, bloodType,
+			dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, patientUUID, address, bloodType,
+		dateOfBirth, emergencyContact, patientGender, medicalNumber, patientName, notes,
+		patientPhone).Exec()
 
-	// Create the appointment json
-	var bb bytes.Buffer
-	bb.WriteString(`{"patientUUID":"`)
-	bb.WriteString(patientUUID.String())
-	bb.WriteString(`","doctorUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
-          "dateScheduled":1000, "notes": "Test notes"}`)
-	entry := bb.String()
+	session.Query(`INSERT INTO futureappointments (appointmentUUID, datescheduled,
+		doctoruuid, notes, patientuuid) VALUES (?,?,?,?,?)`,
+		appointmentUUID, dateScheduled, doctorUUID, appointmentNotes, patientUUID).Exec()
 
-	// Make the reader using this json string
-	jsonStringReader := strings.NewReader(entry)
-
-	endpoint := "/futureappointments"
-	req, err := http.NewRequest("POST", endpoint, jsonStringReader)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rec := httptest.NewRecorder()
-	handler := http.HandlerFunc(FutureAppointmentCreate)
-	handler.ServeHTTP(rec, req)
-
-	status := rec.Code
-	if status != http.StatusCreated {
-		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusNotFound)
-	}
-
-	// Get the current number of appointments
 	numAppointments := session.Query("SELECT * FROM futureAppointments").Iter().NumRows()
 
-	// Fetch the new appointemnt
-	session.Query("SELECT * FROM futureAppointments").Consistency(gocql.One).Scan(
-		&appointmentUUID, nil, nil, nil, nil)
-
+	var bb bytes.Buffer
 	bb.WriteString("/futureappointments/appointmentuuid/")
 	bb.WriteString(appointmentUUID.String())
-	endpoint = bb.String()
+	endpoint := bb.String()
 
-	req, err = http.NewRequest("DELETE", endpoint, jsonStringReader)
+	req, err := http.NewRequest("DELETE", endpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	req.RequestURI = endpoint
 
-	rec = httptest.NewRecorder()
-	handler = http.HandlerFunc(FutureAppointmentDelete)
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(FutureAppointmentDelete)
 	handler.ServeHTTP(rec, req)
 
-	status = rec.Code
+	status := rec.Code
 	if status != http.StatusOK {
 		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusOK)
 	}
@@ -860,5 +1113,19 @@ func TestDeleteFutureAppointmentHandler(t *testing.T) {
 
 	if numAppointments2+1 != numAppointments {
 		t.Errorf("The number of appointments before is %v and the current number of appointments is %v", numAppointments, numAppointments2)
+	}
+
+	// Clean up the DB
+	e = session.Query("DELETE FROM patients where patientuuid = ?", patientUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM doctors where doctoruuid = ?", doctorUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM futureappointments where appointmentuuid = ?", appointmentUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
 	}
 }
