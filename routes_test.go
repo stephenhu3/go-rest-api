@@ -157,7 +157,7 @@ func TestUserCreateHandler(t *testing.T) {
 	defer session.Close()
 
 	// Get current count of patients
-	numPatientsBefore := session.Query("SELECT * FROM users").Iter().NumRows()
+	numUsersBefore := session.Query("SELECT * FROM users").Iter().NumRows()
 
 	// Make the reader using the json string
 	jsonStringReader := strings.NewReader(`{
@@ -187,8 +187,8 @@ func TestUserCreateHandler(t *testing.T) {
 	}
 
 	// Check if the number of patients had changed
-	numPatientsAfter := session.Query("SELECT * FROM users").Iter().NumRows()
-	if numPatientsAfter != (numPatientsBefore + 1) {
+	numUsersAfter := session.Query("SELECT * FROM users").Iter().NumRows()
+	if numUsersAfter != (numUsersBefore + 1) {
 		t.Errorf("The number of users did not change")
 	}
 }
@@ -265,7 +265,7 @@ func TestDoctorCreateHandler(t *testing.T) {
 	defer session.Close()
 
 	// Get current count of patients
-	numPatientsBefore := session.Query("SELECT * FROM doctors").Iter().NumRows()
+	numDoctorsBefore := session.Query("SELECT * FROM doctors").Iter().NumRows()
 
 	// Make the reader using the json string
 	jsonStringReader := strings.NewReader(`{
@@ -296,8 +296,8 @@ func TestDoctorCreateHandler(t *testing.T) {
 	}
 
 	// Check if the number of patients had changed
-	numPatientsAfter := session.Query("SELECT * FROM doctors").Iter().NumRows()
-	if numPatientsAfter != (numPatientsBefore + 1) {
+	numDoctorsAfter := session.Query("SELECT * FROM doctors").Iter().NumRows()
+	if numDoctorsAfter != numDoctorsBefore+1 {
 		t.Errorf("The number of doctors did not change")
 	}
 }
@@ -368,6 +368,121 @@ func TestDoctorGetHandler(t *testing.T) {
 	}
 
 	e := session.Query("DELETE FROM doctors where doctoruuid = ?", doctorUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+}
+
+func TestDoctorListGetHandler(t *testing.T) {
+	var doctorUUID1 gocql.UUID
+	var name1 string
+	var phone1 string
+	var primaryFacility1 string
+	var primarySpeciality1 string
+	var gender1 string
+	var doctorUUID2 gocql.UUID
+	var name2 string
+	var phone2 string
+	var primaryFacility2 string
+	var primarySpeciality2 string
+	var gender2 string
+
+	var err error
+
+	doctorUUID1, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name1 = "Test Doctor"
+	phone1 = "123-456-7890"
+	primaryFacility1 = "FakeAddress1"
+	primarySpeciality1 = "Faker1"
+	gender1 = "Male"
+	doctorUUID2, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name2 = "Testing Doctor"
+	phone2 = "0987-654-321"
+	primaryFacility2 = "Fake Address2"
+	primarySpeciality2 = "Faker2"
+	gender2 = "Female"
+
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	// This keyspace can be changed later for tests (i.e. emr_test )
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	session.Query("INSERT INTO doctors (doctorUUID, name, phone, primaryFacility, primarySpecialty, gender) VALUES (?,?,?,?,?,?)",
+		doctorUUID1, name1, phone1, primaryFacility1, primarySpeciality1, gender1).Exec()
+
+	session.Query("INSERT INTO doctors (doctorUUID, name, phone, primaryFacility, primarySpecialty, gender) VALUES (?,?,?,?,?,?)",
+		doctorUUID2, name2, phone2, primaryFacility2, primarySpeciality2, gender2).Exec()
+
+	endpoint := "/doctors"
+	fmt.Println(endpoint)
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+
+	// Check if any errors occured when creating the new request
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Must manually set the endpoint URI for some unknown reason.
+	req.RequestURI = endpoint
+
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(DoctorListGet)
+	handler.ServeHTTP(rec, req)
+
+	// Get the status code of the page and check if it is OK
+	status := rec.Code
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusOK)
+	}
+
+	// Check if the response's uuid is correct (Expected value).
+	if !strings.Contains(rec.Body.String(), (`"doctorUUID":"` + doctorUUID1.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct doctorUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"gender":"` + gender1 + `"`)) {
+		t.Errorf("The response message did not contain the correct gender. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"name":"` + name1 + `"`)) {
+		t.Errorf("The response message did not contain the correct name. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"phoneNumber":"` + phone1 + `"`)) {
+		t.Errorf("The response message did not contain the correct name. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"primaryFacility":"` + primaryFacility1 + `"`)) {
+		t.Errorf("The response message did not contain the correct facility. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"doctorUUID":"` + doctorUUID2.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct doctorUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"gender":"` + gender2 + `"`)) {
+		t.Errorf("The response message did not contain the correct gender. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"name":"` + name2 + `"`)) {
+		t.Errorf("The response message did not contain the correct name. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"phoneNumber":"` + phone2 + `"`)) {
+		t.Errorf("The response message did not contain the correct name. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"primaryFacility":"` + primaryFacility2 + `"`)) {
+		t.Errorf("The response message did not contain the correct facility. \n The returned message is: \n %v", rec.Body.String())
+	}
+
+	e := session.Query("DELETE FROM doctors where doctoruuid = ?", doctorUUID1).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM doctors where doctoruuid = ?", doctorUUID2).Exec()
 	if e != nil {
 		t.Fatal(e)
 	}
