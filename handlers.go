@@ -1249,19 +1249,20 @@ func NotificationCreate(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	date := n.Date
+	// get current unix timestamp
+	dateCreated := int32(time.Now().Unix())
 	message := n.Messsage
 	receiverUUID := n.ReceiverUUID
 	senderName := n.SenderName
 	senderUUID := n.SenderUUID
 
 	log.Printf("Creating new notification: %d\t%s\t%s\t%s\t%s\t%s\t",
-		date, message, senderUUID, receiverUUID, senderName, senderUUID)
+		dateCreated, message, senderUUID, receiverUUID, senderName, senderUUID)
 
 	// insert new notification entry
-	if err := session.Query(`INSERT INTO notifications (receiverUUID, date, notificationUUID,
+	if err := session.Query(`INSERT INTO notifications (receiverUUID, dateCreated, notificationUUID,
 		message, senderName, senderUUID) VALUES (?, ?, ?, ?, ?, ?)`,
-		receiverUUID, date, notificationUUID, message, senderName, senderUUID).Exec(); err != nil {
+		receiverUUID, dateCreated, notificationUUID, message, senderName, senderUUID).Exec(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -1293,13 +1294,13 @@ func NotificationsGetByDoctor(w http.ResponseWriter, r *http.Request) {
 	var searchUUID = strings.Split(r.RequestURI, "/")[3]
 
 	// Get all notifications for a doctor, limit to last 100
-	iter := session.Query(`SELECT receiverUUID, date, message, senderUUID, senderName FROM
+	iter := session.Query(`SELECT receiverUUID, dateCreated, message, senderUUID, senderName FROM
 		notifications WHERE receiverUUID = ? LIMIT 100`, searchUUID).Consistency(gocql.One).Iter()
 
 	notiList := make(Notifications, iter.NumRows())
 	i := 0
 
-	var date int
+	var dateCreated int
 	var message string
 	var receiverUUID gocql.UUID
 	var senderName string
@@ -1309,9 +1310,9 @@ func NotificationsGetByDoctor(w http.ResponseWriter, r *http.Request) {
 	if iter.NumRows() > 0 {
 		log.Printf("Notifications found")
 
-		for iter.Scan(&receiverUUID, &date, &message, &senderUUID, &senderName) {
+		for iter.Scan(&receiverUUID, &dateCreated, &message, &senderUUID, &senderName) {
 			notiList[i] = Notification{
-				Date: date, Messsage: message,
+				DateCreated: dateCreated, Messsage: message,
 				ReceiverUUID: receiverUUID, SenderName: senderName, SenderUUID: senderUUID}
 			i++
 		}

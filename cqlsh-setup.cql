@@ -87,14 +87,14 @@ CREATE TABLE prescriptions (
 );
 
 CREATE TABLE notifications (
-	date int,
+	dateCreated int,
 	message text,
 	notificationuuid uuid,
 	receiverUUID uuid,
 	senderName text,
 	senderUUID uuid,
-	PRIMARY KEY (receiverUUID, date, notificationuuid)
-) WITH CLUSTERING ORDER BY (date DESC);
+	PRIMARY KEY (receiverUUID, dateCreated, notificationuuid)
+) WITH CLUSTERING ORDER BY (dateCreated DESC);
 
 CREATE TABLE documents (
 	documentUUID uuid,
