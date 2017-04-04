@@ -19,6 +19,7 @@ Run the program:
 $GOPATH/bin/go-rest
 ```
 
+** DO NOT RUN ON PRODUCTION ENVIRONMENT **
 Run the tests:
 ```
 cd $GOPATH/src/
