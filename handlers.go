@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gocql/gocql"
 	"golang.org/x/crypto/bcrypt"
@@ -186,7 +187,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 	password := a.Password
 	role := a.Role
 	name := a.Name
-	// some control in the URI for user createion
+	// some control in the URI for user creation
 	// Patient can only create an account if patient entry exist in system
 	// Doctor requires similar functionality but tied to applicatoin access
 	// Not current implmented for doctors
@@ -201,7 +202,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string] bool {"validError": true, "patientError": true})
+			json.NewEncoder(w).Encode(map[string]bool{"validError": true, "patientError": true})
 			log.Println(err)
 			log.Printf("Cannot create patient user entry, patient does not exist")
 			return
@@ -225,7 +226,7 @@ func UserCreate(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string] bool {"validError": true, "createUserError": true})
+		json.NewEncoder(w).Encode(map[string]bool{"validError": true, "createUserError": true})
 		log.Println(err)
 		log.Printf("Cannot create user exists already")
 		return
@@ -302,7 +303,7 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 /*
 Search for a patient's info
 Method: GET
-Endpoint: /patients/search?patientuuid=:patientuuid
+Endpoint: /patients/patientuuid/{patientuuid}
 */
 func PatientGet(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
@@ -391,7 +392,7 @@ func PatientUpdate(w http.ResponseWriter, r *http.Request) {
 	notes := p.Notes
 	phone := p.Phone
 
-	log.Printf("Udpateing patient: %s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t",
+	log.Printf("Updating patient: %s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t",
 		patientUUID, address, bloodType, dateOfBirth, emergencyContact, gender,
 		medicalNumber, name, notes, phone)
 
@@ -746,7 +747,7 @@ func FutureAppointmentCreate(w http.ResponseWriter, r *http.Request) {
 /*
 Search for info on a future appointment
 Method: GET
-Endpoint: /futureappointments/search?appointmentuuid=:appointmentuuid
+Endpoint: /futureappointments/appointmentuuid/{appointmentuuid}
 */
 func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	// connect to the cluster
@@ -756,11 +757,11 @@ func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	err := r.ParseForm()
-	if err != nil {
-		panic(err)
+	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
+		panic("Improper URI")
 	}
-	var searchUUID = r.Form["appointmentuuid"][0]
+
+	var searchUUID = strings.Split(r.RequestURI, "/")[3]
 
 	var appointmentUUID gocql.UUID
 	var patientUUID gocql.UUID
@@ -932,7 +933,6 @@ func FutureAppointmentDelete(w http.ResponseWriter, r *http.Request) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
 		panic("Improper URI")
 	}
@@ -947,7 +947,7 @@ func FutureAppointmentDelete(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusNotFound)
 		if err := json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
-				Message: "Delete target not found"}); err != nil {
+			Message: "Delete target not found"}); err != nil {
 			panic(err)
 		}
 	} else {
@@ -957,7 +957,7 @@ func FutureAppointmentDelete(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(Status{Code: http.StatusOK,
-				Message: "Delete Success"}); err != nil {
+			Message: "Delete Success"}); err != nil {
 			panic(err)
 		}
 	}
@@ -1347,7 +1347,8 @@ func DocumentCreate(w http.ResponseWriter, r *http.Request) {
 
 	patientUUID := r.FormValue("patientUUID")
 	filename := r.FormValue("filename")
-	dateUploaded := r.FormValue("dateUploaded")
+	// get current unix timestamp
+	dateUploaded := int32(time.Now().Unix())
 
 	file, _, err := r.FormFile("file")
 	if err != nil {

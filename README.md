@@ -96,7 +96,7 @@ HTTP 201 Created
 }
 ```
 -------------------------------------------------------
-GET /futureappointments/search?appointmentuuid=:appointmentuuid
+GET /futureappointments/appointmentuuid/{appointmentuuid}
 
 **Retrieves a scheduled appointment record**
 
@@ -168,7 +168,7 @@ HTTP 201 Created
 }
 ```
 -------------------------------------------------------
-GET /completedappointments/search?appointmentuuid=:appointmentuuid
+GET /completedappointments/appointmentuuid/{appointmentuuid}
 
 **Retrieves a completed appointment entry**
 
@@ -357,8 +357,8 @@ Request:
 
 ```
 Form Data:
-username:
-password:
+Key: "username" Value: {username}
+Key: "password" Value: {password}
 ```
 
 Responses:
@@ -580,28 +580,13 @@ HTTP 200 Found
 POST /documents
 
 **Upload a new document associated with a patient**
-**Send content as base64 encoded string of upload file**
+**Send as form data***
 
 Request:
 ```Form
-------WebKitFormBoundaryAXbAxCjAnAVZ9VYz
-Content-Disposition: form-data; name="dateUploaded"
-
-1491035314
-------WebKitFormBoundaryAXbAxCjAnAVZ9VYz
-Content-Disposition: form-data; name="filename"
-
-pdf.pdf
-------WebKitFormBoundaryAXbAxCjAnAVZ9VYz
-Content-Disposition: form-data; name="patientUUID"
-
-36b95ee0-3742-42a1-a521-ecbb2528e2a4
-------WebKitFormBoundaryAXbAxCjAnAVZ9VYz
-Content-Disposition: form-data; name="file"; filename="pdf.pdf"
-Content-Type: application/pdf
-
-
-------WebKitFormBoundaryAXbAxCjAnAVZ9VYz--
+Key: "file" Value: {file upload}
+Key: "filename" Value: "test.pdf"
+Key: "patientUUID" Value: 6e894f6b-cbf6-4703-ad4f-bd93126450cb
 ```
 
 Response:
@@ -610,8 +595,7 @@ HTTP 201 Created
 
 ```json
 {
-  "code": 201,
-  "message": "Document entry successfully created."
+  "documentuuid": "cba865a5-0b45-43dd-93ac-e6cae4f1dce9"
 }
 ```
 -------------------------------------------------------
