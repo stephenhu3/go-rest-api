@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/gocql/gocql"
 	"net/http"
 	"net/http/httptest"
@@ -136,8 +137,8 @@ func TestPatientGetHandler(t *testing.T) {
 
 	// Get the status code of the page and check if it is OK
 	status := rec.Code
-	if status != http.StatusFound {
-		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusCreated)
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusOK)
 	}
 
 	// Check if the response's uuid is correct (Expected value).
@@ -149,6 +150,7 @@ func TestPatientGetHandler(t *testing.T) {
 func TestFutureAppointmentCreateHandler(t *testing.T) {
 	var patientUUID gocql.UUID
 	var entry string
+
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
@@ -215,13 +217,17 @@ func TestFutureAppointmentGetHandler(t *testing.T) {
 	defer session.Close()
 
 	// Get the values from the first appointment found
-	session.Query("SELECT * FROM futureappointments").Consistency(gocql.One).Scan(
+	session.Query("SELECT * FROM futureAppointments").Consistency(gocql.One).Scan(
 		&appointmentUUID, &dateScheduled, &doctorUUID, &notes, &patientUUID)
 
+	fmt.Println("Querying AppointmentUUID: ", appointmentUUID.String())
+
 	var buff bytes.Buffer
-	buff.WriteString("/futureappointments/search/?appointmentuuid=")
+	buff.WriteString("/futureappointments/search?appointmentuuid=")
 	buff.WriteString(appointmentUUID.String())
 	endpoint := buff.String()
+
+	fmt.Println("Using endpoint: ", endpoint)
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
@@ -237,8 +243,8 @@ func TestFutureAppointmentGetHandler(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	status := rec.Code
-	if status != http.StatusFound {
-		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusOK)
 	}
 
 	// Check the body for patientUUID
@@ -269,8 +275,13 @@ func TestCompletedAppointmentCreateHandler(t *testing.T) {
 	if patientErr != nil {
 		t.Fatal(patientErr)
 	}
+
+	appointmentUUID := "1cf1dca9-4a4a-4f47-8201-401bbe0fb927"
+
 	var bb bytes.Buffer
-	bb.WriteString(`{"patientUUID":"`)
+	bb.WriteString(`{"appointmentUUID":"`)
+	bb.WriteString(appointmentUUID)
+	bb.WriteString(`", "patientUUID":"`)
 	bb.WriteString(patientUUID.String())
 	bb.WriteString(`","doctorUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
 									"dateVisited":1099,
@@ -337,7 +348,7 @@ func TestCompletedAppointmentGetHandler(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	buff.WriteString("/completedappointments/search/?appointmentuuid=")
+	buff.WriteString("/completedappointments/appointmentuuid/")
 	buff.WriteString(appointmentUUID.String())
 	endpoint := buff.String()
 
@@ -355,8 +366,8 @@ func TestCompletedAppointmentGetHandler(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	status := rec.Code
-	if status != http.StatusFound {
-		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusOK)
 	}
 
 	// check the body of the returned message
@@ -382,8 +393,8 @@ func TestAppointmentGetByDoctorHandler(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	status := rec.Code
-	if status != http.StatusFound {
-		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusOK)
 	}
 
 	// There must be at least 1 entry because it was created in previous tests.
@@ -427,13 +438,11 @@ func TestPatientGetByDoctorHandler(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	status := rec.Code
-	if status != http.StatusFound {
-		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusFound)
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusOK)
 	}
 	// Need to check db for uuids to check in the body
 	if !strings.Contains(rec.Body.String(), patientUUID.String()) {
 		t.Errorf("The response message did not contain the correct doctorUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
 	}
 }
-
-// todo: Make function that creates connection to the DB and returns the GOCQL session.
