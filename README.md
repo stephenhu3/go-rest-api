@@ -18,6 +18,12 @@ Run the program:
 ```
 $GOPATH/bin/go-rest
 ```
+
+Run the tests:
+```
+cd $GOPATH/src/
+go test github.com/{username}/go-rest
+```
 -------------------------------------------------------
 # API Reference
 -------------------------------------------------------
