@@ -447,7 +447,7 @@ func TestPatientGetByDoctorHandler(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestDeleteFutureAppointmentHandler(t *testing.T) {
 	// Variables for Appointments
 	var appointmentUUID gocql.UUID
 	var patientUUID gocql.UUID
