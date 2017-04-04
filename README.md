@@ -490,15 +490,15 @@ POST /prescription
 Request:
 
 ```json
-{
-  "patientUUID": 556d9f18-829b-4011-a451-df571b369111,
-  "doctorUUID": 40119f18-829b-4011-a451-b369111df571.
+[{
+  "patientUUID": "556d9f18-829b-4011-a451-df571b369111",
+  "doctorUUID": "40119f18-829b-4011-a451-b369111df571",
   "doctor,omitempty": "Dr Ramoray",
   "drug": "Drug Name",
   "startDate": 191289600,
   "endDate": 191389600,
   "instructions,omitempty": "take twice daily"
-}
+}]
 ```
 
 Response:
