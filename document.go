@@ -7,5 +7,5 @@ type Document struct {
 	PatientUUID  gocql.UUID `json:"patientUUID"`
 	Filename     string     `json:"filename"`
 	Content      string     `json:"content"`
-	DateUploaded int        `json:"dateUploaded"`
+	DateUploaded int        `json:"dateUploaded, omitempty"`
 }
