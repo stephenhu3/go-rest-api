@@ -1,7 +1,6 @@
 package main
 
 import (
-	".."
 	"bytes"
 	"fmt"
 	"github.com/gocql/gocql"
@@ -148,6 +147,114 @@ func TestPatientGetHandler(t *testing.T) {
 	}
 }
 
+func TestUserCreateHandler(t *testing.T) {
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	// This keyspace can be changed later for tests (i.e. emr_test )
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Get current count of patients
+	numPatientsBefore := session.Query("SELECT * FROM users").Iter().NumRows()
+
+	// Make the reader using the json string
+	jsonStringReader := strings.NewReader(`{
+																				  "username": "tester@test.net",
+																				  "password": "test",
+																				  "role": "patient",
+																				  "name": "Tester"
+																				}`)
+
+	// Create the request with json as body
+	req, err := http.NewRequest("POST", "/users", jsonStringReader)
+
+	// Check if any errors occured when creating the new request
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(UserCreate)
+	handler.ServeHTTP(rec, req)
+
+	// Get the status code of the page and check if it is OK
+	status := rec.Code
+	if status != http.StatusCreated {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusCreated)
+	}
+
+	// Check if the number of patients had changed
+	numPatientsAfter := session.Query("SELECT * FROM users").Iter().NumRows()
+	if numPatientsAfter != (numPatientsBefore + 1) {
+		t.Errorf("The number of patients did not change")
+	}
+}
+
+func TestUserGetHandler(t *testing.T) {
+	// Variables used for storing the patient
+	var userUUID gocql.UUID
+	var username string
+	var role string
+	var name string
+
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	// This keyspace can be changed later for tests (i.e. emr_test )
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Get the first patient in the database
+	session.Query("SELECT * FROM users").Consistency(gocql.One).Scan(&username, &name,
+		&role, nil, nil, &userUUID)
+
+	var buff bytes.Buffer
+	buff.WriteString("/user/useruuid/")
+	buff.WriteString(userUUID.String())
+	endpoint := buff.String()
+	fmt.Println(endpoint)
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+
+	// Check if any errors occured when creating the new request
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Must manually set the endpoint URI for some unknown reason.
+	req.RequestURI = endpoint
+
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(UserGet)
+	handler.ServeHTTP(rec, req)
+
+	// Get the status code of the page and check if it is OK
+	status := rec.Code
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusOK)
+	}
+
+	// Check if the response's uuid is correct (Expected value).
+	if !strings.Contains(rec.Body.String(), (`"userUUID":"` + userUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct userUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"role":"` + role + `"`)) {
+		t.Errorf("The response message did not contain the correct username. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"name":"` + name + `"`)) {
+		t.Errorf("The response message did not contain the correct name. \n The returned message is: \n %v", rec.Body.String())
+	}
+	e := session.Query("DELETE FROM users where username = ?", username).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+}
+
 func TestFutureAppointmentCreateHandler(t *testing.T) {
 	var patientUUID gocql.UUID
 	var entry string
@@ -256,6 +363,8 @@ func TestFutureAppointmentGetHandler(t *testing.T) {
 }
 
 func TestCompletedAppointmentCreateHandler(t *testing.T) {
+	var patientUUID gocql.UUID
+
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
@@ -264,12 +373,6 @@ func TestCompletedAppointmentCreateHandler(t *testing.T) {
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	// Get current count of appointments
-	numAppointments := session.Query("SELECT * FROM completedAppointments").Iter().NumRows()
-
-	var patientUUID gocql.UUID
-
-	//
 	patientErr := session.Query("SELECT * FROM patients").Consistency(gocql.One).Scan(&patientUUID,
 		nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
@@ -311,13 +414,6 @@ func TestCompletedAppointmentCreateHandler(t *testing.T) {
 	status := rec.Code
 	if status != http.StatusCreated {
 		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusNotFound)
-	}
-
-	// Check if the number of appointments actually went up
-	numAppointments2 := session.Query("SELECT * FROM completedAppointments").Iter().NumRows()
-
-	if numAppointments2 != numAppointments+1 {
-		t.Errorf("Number of appointments in the database: got %v but supposed to be %v", numAppointments2, numAppointments+1)
 	}
 }
 
@@ -374,6 +470,11 @@ func TestCompletedAppointmentGetHandler(t *testing.T) {
 	// check the body of the returned message
 	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
 		t.Errorf("The response message did not contain the correct patientUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
+	}
+
+	e := session.Query("delete from completedappointments where appointmentuuid = ?", appointmentUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
 	}
 }
 
@@ -527,5 +628,4 @@ func TestDeleteFutureAppointmentHandler(t *testing.T) {
 	if numAppointments2+1 != numAppointments {
 		t.Errorf("The number of appointments before is %v and the current number of appointments is %v", numAppointments, numAppointments2)
 	}
-
 }
