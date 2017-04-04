@@ -1,6 +1,7 @@
 package main
 
 import (
+	".."
 	"bytes"
 	"fmt"
 	"github.com/gocql/gocql"
