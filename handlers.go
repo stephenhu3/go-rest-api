@@ -984,7 +984,10 @@ func DoctorCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	doctorUUID := d.DoctorUUID
+	doctorUUID, err := gocql.RandomUUID()
+	if err != nil {
+		log.Fatal(err)
+	}
 	name := d.Name
 	phoneNumber := d.Phone
 	prFacility := d.PrimaryFacility
