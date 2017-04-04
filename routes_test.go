@@ -223,7 +223,7 @@ func TestFutureAppointmentGetHandler(t *testing.T) {
 	fmt.Println("Querying AppointmentUUID: ", appointmentUUID.String())
 
 	var buff bytes.Buffer
-	buff.WriteString("/futureappointments/search?appointmentuuid=")
+	buff.WriteString("/futureappointments/appointmentuuid/")
 	buff.WriteString(appointmentUUID.String())
 	endpoint := buff.String()
 
@@ -445,4 +445,86 @@ func TestPatientGetByDoctorHandler(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), patientUUID.String()) {
 		t.Errorf("The response message did not contain the correct doctorUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
 	}
+}
+
+func TestDelete(t *testing.T) {
+	// Variables for Appointments
+	var appointmentUUID gocql.UUID
+	var patientUUID gocql.UUID
+
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	// This keyspace can be changed later for tests (i.e. emr_test )
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Get a patient to create with
+	patientErr := session.Query("SELECT * FROM patients").Consistency(gocql.One).Scan(&patientUUID,
+		nil, nil, nil, nil, nil, nil, nil, nil, nil)
+
+	if patientErr != nil {
+		t.Fatal(patientErr)
+	}
+
+	// Create the appointment json
+	var bb bytes.Buffer
+	bb.WriteString(`{"patientUUID":"`)
+	bb.WriteString(patientUUID.String())
+	bb.WriteString(`","doctorUUID": "1cf1dca9-4a4a-4f47-8201-401bbe0fb927",
+          "dateScheduled":1000, "notes": "Test notes"}`)
+	entry := bb.String()
+
+	// Make the reader using this json string
+	jsonStringReader := strings.NewReader(entry)
+
+	endpoint := "/futureappointments"
+	req, err := http.NewRequest("POST", endpoint, jsonStringReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(FutureAppointmentCreate)
+	handler.ServeHTTP(rec, req)
+
+	status := rec.Code
+	if status != http.StatusCreated {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusNotFound)
+	}
+
+	// Get the current number of appointments
+	numAppointments := session.Query("SELECT * FROM futureAppointments").Iter().NumRows()
+
+	// Fetch the new appointemnt
+	session.Query("SELECT * FROM futureAppointments").Consistency(gocql.One).Scan(
+		&appointmentUUID, nil, nil, nil, nil)
+
+	bb.WriteString("/futureappointments/appointmentuuid/")
+	bb.WriteString(appointmentUUID.String())
+	endpoint = bb.String()
+
+	req, err = http.NewRequest("DELETE", endpoint, jsonStringReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.RequestURI = endpoint
+
+	rec = httptest.NewRecorder()
+	handler = http.HandlerFunc(FutureAppointmentDelete)
+	handler.ServeHTTP(rec, req)
+
+	status = rec.Code
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusOK)
+	}
+
+	numAppointments2 := session.Query("SELECT * FROM futureAppointments").Iter().NumRows()
+
+	if numAppointments2+1 != numAppointments {
+		t.Errorf("The number of appointments before is %v and the current number of appointments is %v", numAppointments, numAppointments2)
+	}
+
 }
