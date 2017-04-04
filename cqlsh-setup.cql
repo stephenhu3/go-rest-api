@@ -51,3 +51,57 @@ CREATE TABLE futureAppointments (
 CREATE INDEX futureAppointmentPatientUUID ON emr.futureAppointments (patientUUID);
 CREATE INDEX futureAppointmentDoctorUUID ON emr.futureAppointments (doctorUUID);
 CREATE INDEX futureAppointmentDateScheduled ON emr.futureAppointments (dateScheduled);
+
+
+CREATE TABLE doctors (
+	doctorUUID uuid,
+	name text,
+	phone text,
+	primaryFacility text,
+	primarySpecialty text,
+	gender text,
+	PRIMARY KEY (doctorUUID)
+);
+
+CREATE TABLE users (
+	username text,
+	salt blob,
+	saltedHash blob,
+	userUUID uuid,
+	role text,
+	name text,
+	PRIMARY KEY (username)
+);
+CREATE INDEX usersUserUUID ON emr.users (userUUID);
+
+CREATE TABLE prescriptions (
+	patientUUID uuid,
+	prescriptionUUID uuid,
+	doctorUUID uuid,
+	doctorName text,
+	drug text,
+	startDate int,
+	endDate int,
+	instructions text,
+	PRIMARY KEY (patientUUID, endDate, prescriptionUUID)
+);
+
+CREATE TABLE notifications (
+	date int,
+	message text,
+	notificationuuid uuid,
+	receiverUUID uuid,
+	senderName text,
+	senderUUID uuid,
+	PRIMARY KEY (receiverUUID, date, notificationuuid)
+) WITH CLUSTERING ORDER BY (date DESC);
+
+CREATE TABLE documents (
+	documentUUID uuid,
+	patientUUID uuid,
+	filename text,
+	content blob,
+	dateUploaded int,
+	PRIMARY KEY (documentUUID)
+);
+CREATE INDEX documentsPatientUUID ON emr.documents (patientUUID);

@@ -19,6 +19,24 @@ var routes = Routes{
 		Index,
 	},
 	Route{
+		"UserAuthenticate",
+		"POST",
+		"/login",
+		UserAuthenticate,
+	},
+	Route{
+		"UserGet",
+		"GET",
+		"/users/useruuid/{useruuid}",
+		UserGet,
+	},
+	Route{
+		"UserCreate",
+		"POST",
+		"/users",
+		UserCreate,
+	},
+	Route{
 		"PatientCreate",
 		"POST",
 		"/patients",
@@ -57,7 +75,7 @@ var routes = Routes{
 	Route{
 		"CompletedAppointmentGet",
 		"GET",
-		"/completedappointments/search",
+		"/completedappointments/appointmentuuid/{apointmentuuid}",
 		CompletedAppointmentGet,
 	},
 	Route{
@@ -65,5 +83,77 @@ var routes = Routes{
 		"GET",
 		"/appointments/doctoruuid/{doctoruuid}",
 		AppointmentGetByDoctor,
+	},
+	Route{
+		"DoctorCreate",
+		"POST",
+		"/doctors",
+		DoctorCreate,
+	},
+	Route{
+		"DoctorGet",
+		"GET",
+		"/doctors/doctoruuid/{doctoruuid}",
+		DoctorGet,
+	},
+	Route{
+		"DoctorListGet",
+		"GET",
+		"/doctors",
+		DoctorListGet,
+	},
+	Route{
+		"PrescriptionCreate",
+		"POST",
+		"/prescription",
+		PrescriptionCreate,
+	},
+	Route{
+		"PrescriptionsGetByPatient",
+		"GET",
+		"/prescriptions/patientuuid/{patientuuid}",
+		PrescriptionsGetByPatient,
+	},
+	Route{
+		"AppointmentGetByPatient",
+		"GET",
+		"/appointments/patientuuid/{patientuuid}",
+		AppointmentGetByPatient,
+	},
+	Route{
+		"PatientUpdate",
+		"PUT",
+		"/patients",
+		PatientUpdate,
+	},
+	Route{
+		"NotificationCreate",
+		"POST",
+		"/notifications",
+		NotificationCreate,
+	},
+	Route{
+		"NotificationsGetByDoctor",
+		"GET",
+		"/notifications/doctoruuid/{doctoruuid}",
+		NotificationsGetByDoctor,
+	},
+	Route{
+		"DocumentCreate",
+		"POST",
+		"/documents",
+		DocumentCreate,
+	},
+	Route{
+		"DocumentGet",
+		"GET",
+		"/documents/documentuuid/{documentuuid}",
+		DocumentGet,
+	},
+	Route{
+		"DocumentListGetByPatient",
+		"GET",
+		"/documents/patientuuid/{patientuuid}",
+		DocumentListGetByPatient,
 	},
 }

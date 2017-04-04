@@ -149,7 +149,7 @@ HTTP 201 Created
 }
 ```
 -------------------------------------------------------
-GET /futureappointments/search?appointmentuuid=:appointmentuuid
+GET /completedappointments/search?appointmentuuid=:appointmentuuid
 
 **Retrieves a completed appointment entry**
 
@@ -256,3 +256,361 @@ HTTP 302 Found
   }
 ]
 ```
+
+-------------------------------------------------------
+
+GET /doctors/doctoruuid/{doctoruuid}
+
+**Retrieves a doctor profile**
+
+Response:
+
+HTTP 200 Found
+
+```json
+{
+  "doctorUUID": "556d9f18-829b-4011-a451-df571b369111",
+  "name": "Anoosh Gilliam",
+  "phoneNumber": "555-222-1111",
+  "primaryFacility": "address",
+  "primarySpeciality": "Liver",
+  "gender": "Female"
+}
+```
+-------------------------------------------------------
+
+GET /doctors
+
+**Retrieves a list of all a clinics doctors**
+
+Response:
+
+HTTP 200 Found
+
+```json
+[
+{
+  "doctorUUID": "556d9f18-829b-4011-a451-df571b369111",
+  "name": "Anoosh Gilliam",
+  "phoneNumber": "555-222-1111",
+  "primaryFacility": "address",
+  "primarySpeciality": "Liver",
+  "gender": "Female"
+}
+]
+```
+-------------------------------------------------------
+
+
+POST /doctors
+
+**Create a new doctor profile**
+
+Request:
+
+```json
+{
+  "name": "Doctor Name",
+  "phoneNumber": "111-333-2222",
+  "primaryFacility": "address",
+  "primarySpeciality": "Specialty",
+  "gender": "Male"
+}
+```
+
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "code": 201,
+  "message": "Doctor entry successfully created."
+}
+```
+-------------------------------------------------------
+
+POST /login
+
+**Validates user credentials and returns userUUID**
+**Requires using form body input (postman) or x-www-formurlencoded**
+Request:
+
+```
+Form Data:
+username:
+password:
+```
+
+Responses:
+
+HTTP 401 Unauthorized
+
+```json
+{
+  "code": "401",
+  "message": "Incorrect username or password"
+}
+```
+
+HTTP 200 Found
+
+```json
+{
+  "name": "Wolverine",
+  "role": "Doctor",
+  "userUUID": "556d9f18-829b-4011-a451-df571b369111"
+}
+```
+-------------------------------------------------------
+
+GET /users/useruuid/{useruuid}
+
+**Get users basic information**
+
+Responses:
+
+HTTP 200 Found
+
+```json
+{
+  "name": "Wolverine",
+  "role": "Doctor",
+  "userUUID": "556d9f18-829b-4011-a451-df571b369111"
+}
+```
+-------------------------------------------------------
+
+
+POST /users
+
+**Create a new user entry**
+
+Request:
+
+```json
+{
+  "username": "wolverine@xmen.ca",
+  "password": "xmen",
+  "role": "patient",
+  "name": "Sally"
+}
+```
+
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "userUUID": "556d9f18-829b-4011-a451-df571b369111"
+}
+```
+-------------------------------------------------------
+
+PUT /patients
+
+**Update an new user entry**
+
+Request:
+
+```json
+{
+  "patientUUID": "556d9f18-829b-4011-a451-df571b369111",
+  "address": "5698 Cedar Avenue, San Francisco, California",
+  "bloodType": "B-Positive",
+  "dateOfBirth": 191289600,
+  "emergencyContact": "415-555-8271",
+  "gender": "F",
+  "medicalNumber": "1234567890",
+  "name": "Kelly Lai",
+  "notes": "Accompanied by guide dog, ensure patient's area is wheelchair-friendly",
+  "phoneNumber": "483-555-5123"
+}
+```
+
+Response:
+
+HTTP 200 OK
+
+```json
+{
+  "code": 200,
+  "message": "Patient entry successfully updated."
+}
+```
+
+HTTP 400 OK
+
+```json
+{
+  "code": 400,
+  "message": "Error Occured: Patient not updated."
+}
+```
+-------------------------------------------------------
+
+POST /prescription
+
+**Create a new prescription for a patient**
+
+Request:
+
+```json
+{
+  "patientUUID": 556d9f18-829b-4011-a451-df571b369111,
+  "doctorUUID": 40119f18-829b-4011-a451-b369111df571.
+  "doctor,omitempty": "Dr Ramoray",
+  "drug": "Drug Name",
+  "startDate": 191289600,
+  "endDate": 191389600,
+  "instructions,omitempty": "take twice daily"
+}
+```
+
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "code": 201,
+  "message": "Prescription entry successfully created."
+}
+```
+-------------------------------------------------------
+GET /prescriptions/patientuuid/{patientuuid}
+
+**Retrieves a list of a patients prescriptions **
+
+Response:
+
+HTTP 200 Found
+
+```json
+[
+{
+  "patientUUID": 556d9f18-829b-4011-a451-df571b369111,
+  "doctorUUID": 40119f18-829b-4011-a451-b369111df571.
+  "prescriptionUUID": 57c7aea1-9fea-422d-ae35-dbf8ce5f5dda
+  "doctor,omitempty": "Dr Ramoray",
+  "drug": "Drug Name",
+  "startDate": 191289600,
+  "endDate": 191389600,
+  "instructions,omitempty": "take twice daily"
+}
+]
+```
+-------------------------------------------------------
+
+
+POST /notifications
+
+**Create a new notificatoins for a doctor**
+
+Request:
+
+```json
+{
+"date":1488254862,
+"message":"Hey man?",
+"senderUUID":"20a5e81c-399f-4777-8bea-9c1fc2388f37",
+"receiverUUID":"4498720b-0491-424f-8e52-6e13bd33da71",
+"senderName":"Cyclops"
+}
+```
+
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "code": 201,
+  "message": "Notification entry successfully created."
+}
+```
+-------------------------------------------------------
+GET /notifications/doctoruuid/{doctoruuid}
+
+**Retrieves a list of a doctor's notifications**
+
+Response:
+
+HTTP 200 Found
+
+```json
+[
+  {
+    "date": 1488254862,
+    "message": "Have you seen Jean?",
+    "receiverUUID": "4498720b-0491-424f-8e52-6e13bd33da71",
+    "senderName": "Cyclops",
+    "senderUUID": "20a5e81c-399f-4777-8bea-9c1fc2388f37"
+  },
+  {
+    "date": 1388254862,
+    "message": "Hey man?",
+    "receiverUUID": "4498720b-0491-424f-8e52-6e13bd33da71",
+    "senderName": "Cyclops",
+    "senderUUID": "20a5e81c-399f-4777-8bea-9c1fc2388f37"
+  }
+]
+```
+-------------------------------------------------------
+POST /documents
+
+**Upload a new document associated with a patient**
+**Send content as base64 encoded string of upload file**
+
+Request:
+
+```json
+{
+  "patientUUID": "6e894f6b-cbf6-4703-ad4f-bd93126450cb",
+  "filename": "test.pdf",
+  "content": "JVBERi0xLjEKJcKlwrHDqwoKMSAwIG9iagogIDw8IC9UeXBlIC9DYXRhbG9nCiAgICAgL1BhZ2VzIDIgMCBSCiAgPj4KZW5kb2JqCgoyIDAgb2JqCiAgPDwgL1R5cGUgL1BhZ2VzCiAgICAgL0tpZHMgWzMgMCBSXQogICAgIC9Db3VudCAxCiAgICAgL01lZGlhQm94IFswIDAgMzAwIDE0NF0KICA+PgplbmRvYmoKCjMgMCBvYmoKICA8PCAgL1R5cGUgL1BhZ2UKICAgICAgL1BhcmVudCAyIDAgUgogICAgICAvUmVzb3VyY2VzCiAgICAgICA8PCAvRm9udAogICAgICAgICAgIDw8IC9GMQogICAgICAgICAgICAgICA8PCAvVHlwZSAvRm9udAogICAgICAgICAgICAgICAgICAvU3VidHlwZSAvVHlwZTEKICAgICAgICAgICAgICAgICAgL0Jhc2VGb250IC9UaW1lcy1Sb21hbgogICAgICAgICAgICAgICA+PgogICAgICAgICAgID4+CiAgICAgICA+PgogICAgICAvQ29udGVudHMgNCAwIFIKICA+PgplbmRvYmoKCjQgMCBvYmoKICA8PCAvTGVuZ3RoIDU1ID4+CnN0cmVhbQogIEJUCiAgICAvRjEgMTggVGYKICAgIDAgMCBUZAogICAgKEhlbGxvIFdvcmxkKSBUagogIEVUCmVuZHN0cmVhbQplbmRvYmoKCnhyZWYKMCA1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxOCAwMDAwMCBuIAowMDAwMDAwMDc3IDAwMDAwIG4gCjAwMDAwMDAxNzggMDAwMDAgbiAKMDAwMDAwMDQ1NyAwMDAwMCBuIAp0cmFpbGVyCiAgPDwgIC9Sb290IDEgMCBSCiAgICAgIC9TaXplIDUKICA+PgpzdGFydHhyZWYKNTY1CiUlRU9GCg==",
+  "dateUploaded": 1479463552
+}
+```
+
+Response:
+
+HTTP 201 Created
+
+```json
+{
+  "code": 201,
+  "message": "Document entry successfully created."
+}
+```
+-------------------------------------------------------
+GET /documents/documentuuid/{documentuuid}
+
+**Downloads a document**
+
+Response:
+
+HTTP 200 Found (Downloads the requested file)
+
+-------------------------------------------------------
+
+GET /documents/patientuuid/{patientuuid}
+
+**Retrieves a list of a patients's documents**
+
+Response:
+
+HTTP 200 Found
+
+```json
+[
+  {
+    "documentUUID": "4498720b-0491-424f-8e52-6e13bd33da71",
+    "patientUUID": "20a5e81c-399f-4777-8bea-9c1fc2388f37",
+    "filename": "fileName.pdf"
+    "dateUploaded": 1488254862
+  }
+]
+```
+-------------------------------------------------------
