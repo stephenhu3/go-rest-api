@@ -69,7 +69,7 @@ var routes = Routes{
 	Route{
 		"FutureAppointmentGet",
 		"GET",
-		"/futureappointments/search",
+		"/futureappointments/appointmentuuid/{appointmentuuid}",
 		FutureAppointmentGet,
 	},
 	Route{
@@ -81,7 +81,7 @@ var routes = Routes{
 	Route{
 		"CompletedAppointmentGet",
 		"GET",
-		"/completedappointments/appointmentuuid/{apointmentuuid}",
+		"/completedappointments/appointmentuuid/{appointmentuuid}",
 		CompletedAppointmentGet,
 	},
 	Route{
