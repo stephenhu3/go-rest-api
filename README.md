@@ -101,7 +101,7 @@ HTTP 201 Created
 }
 ```
 -------------------------------------------------------
-GET /futureappointments/search?appointmentuuid=:appointmentuuid
+GET /futureappointments/search?appointmentuuid={appointmentuuid}
 
 **Retrieves a scheduled appointment record**
 
