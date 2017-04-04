@@ -189,7 +189,7 @@ func TestUserCreateHandler(t *testing.T) {
 	// Check if the number of patients had changed
 	numPatientsAfter := session.Query("SELECT * FROM users").Iter().NumRows()
 	if numPatientsAfter != (numPatientsBefore + 1) {
-		t.Errorf("The number of patients did not change")
+		t.Errorf("The number of users did not change")
 	}
 }
 
@@ -250,6 +250,124 @@ func TestUserGetHandler(t *testing.T) {
 		t.Errorf("The response message did not contain the correct name. \n The returned message is: \n %v", rec.Body.String())
 	}
 	e := session.Query("DELETE FROM users where username = ?", username).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+}
+
+func TestDoctorCreateHandler(t *testing.T) {
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	// This keyspace can be changed later for tests (i.e. emr_test )
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Get current count of patients
+	numPatientsBefore := session.Query("SELECT * FROM doctors").Iter().NumRows()
+
+	// Make the reader using the json string
+	jsonStringReader := strings.NewReader(`{
+																				  "name": "Doctor Name",
+																				  "phoneNumber": "111-333-2222",
+																				  "primaryFacility": "address",
+																				  "primarySpeciality": "Specialty",
+																				  "gender": "Male"
+																				}`)
+
+	// Create the request with json as body
+	req, err := http.NewRequest("POST", "/doctors", jsonStringReader)
+
+	// Check if any errors occured when creating the new request
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(DoctorCreate)
+	handler.ServeHTTP(rec, req)
+
+	// Get the status code of the page and check if it is OK
+	status := rec.Code
+	if status != http.StatusCreated {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusCreated)
+	}
+
+	// Check if the number of patients had changed
+	numPatientsAfter := session.Query("SELECT * FROM doctors").Iter().NumRows()
+	if numPatientsAfter != (numPatientsBefore + 1) {
+		t.Errorf("The number of doctors did not change")
+	}
+}
+
+func TestDoctorGetHandler(t *testing.T) {
+	// Variables used for storing the patient
+	var doctorUUID gocql.UUID
+	var name string
+	var phone string
+	var primaryFacility string
+	var primarySpeciality string
+	var gender string
+
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	// This keyspace can be changed later for tests (i.e. emr_test )
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Get the first patient in the database
+	session.Query("SELECT * FROM doctors").Consistency(gocql.One).Scan(&doctorUUID, &gender,
+		&name, &phone, &primaryFacility, &primarySpeciality)
+
+	var buff bytes.Buffer
+	buff.WriteString("/doctors/doctoruuid/")
+	buff.WriteString(doctorUUID.String())
+	endpoint := buff.String()
+	fmt.Println(endpoint)
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+
+	// Check if any errors occured when creating the new request
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Must manually set the endpoint URI for some unknown reason.
+	req.RequestURI = endpoint
+
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(DoctorGet)
+	handler.ServeHTTP(rec, req)
+
+	// Get the status code of the page and check if it is OK
+	status := rec.Code
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusOK)
+	}
+
+	// Check if the response's uuid is correct (Expected value).
+	if !strings.Contains(rec.Body.String(), (`"doctorUUID":"` + doctorUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct doctorUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"gender":"` + gender + `"`)) {
+		t.Errorf("The response message did not contain the correct gender. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"name":"` + name + `"`)) {
+		t.Errorf("The response message did not contain the correct name. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"phoneNumber":"` + phone + `"`)) {
+		t.Errorf("The response message did not contain the correct name. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"primaryFacility":"` + primaryFacility + `"`)) {
+		t.Errorf("The response message did not contain the correct facility. \n The returned message is: \n %v", rec.Body.String())
+	}
+
+	e := session.Query("DELETE FROM doctors where doctoruuid = ?", doctorUUID).Exec()
 	if e != nil {
 		t.Fatal(e)
 	}
