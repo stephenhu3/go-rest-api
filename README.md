@@ -484,7 +484,7 @@ HTTP 201 Created
 
 PUT /patients
 
-**Update an new user entry**
+**Update a user entry**
 
 Request:
 
@@ -514,7 +514,7 @@ HTTP 200 OK
 }
 ```
 
-HTTP 400 OK
+HTTP 400 Error
 
 ```json
 {

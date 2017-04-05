@@ -6,6 +6,7 @@ import (
 	"github.com/gocql/gocql"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -1268,6 +1269,144 @@ func TestPrescriptionGetByPatient(t *testing.T) {
 
 	e = session.Query(`DELETE FROM prescriptions where prescriptionUUID = ? and
 			patientUUID = ? and endDate = ?`, prescriptionUUID2, patientUUID, endDate2).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+}
+
+func TestPatientUpdateHandler(t *testing.T) {
+	var patientUUID gocql.UUID
+	var err error
+
+	// Patient Info
+	patientUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := "FakeAddress"
+	bloodType := "O"
+	dateOfBirth := 191289601
+	emergencyContact := "415-555-8271"
+	patientGender := "M"
+	medicalNumber := "151511517"
+	patientName := "Brown Drey"
+	notes := "Broken Legs"
+	patientPhone := "151-454-7878"
+
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	// Add patient to DB
+	session.Query(`INSERT INTO patients (patientUuid, address, bloodType,
+				dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, patientUUID, address, bloodType,
+		dateOfBirth, emergencyContact, patientGender, medicalNumber, patientName, notes,
+		patientPhone).Exec()
+
+	// Modify a field
+	address = "New address"
+
+	// Get the appointments for patient Brown Drey
+	var bb bytes.Buffer
+	bb.WriteString(`{"patientUUID":"`)
+	bb.WriteString(patientUUID.String())
+	bb.WriteString(`","address":"`)
+	bb.WriteString(address)
+	bb.WriteString(`","bloodType":"`)
+	bb.WriteString(bloodType)
+	bb.WriteString(`","dateOfBirth":`)
+	bb.WriteString(strconv.Itoa(dateOfBirth))
+	bb.WriteString(`,"emergencyContact":"`)
+	bb.WriteString(emergencyContact)
+	bb.WriteString(`","gender":"`)
+	bb.WriteString(patientGender)
+	bb.WriteString(`","medicalNumber":"`)
+	bb.WriteString(medicalNumber)
+	bb.WriteString(`","name":"`)
+	bb.WriteString(patientName)
+	bb.WriteString(`","notes":"`)
+	bb.WriteString(notes)
+	bb.WriteString(`","phoneNumber":"`)
+	bb.WriteString(patientPhone)
+	bb.WriteString(`"}`)
+
+	entry := bb.String()
+
+	// Make the reader using the json string
+	jsonStringReader := strings.NewReader(entry)
+
+	endpoint := "/patients"
+	req, err := http.NewRequest("PUT", endpoint, jsonStringReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.RequestURI = endpoint
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(PatientUpdate)
+	handler.ServeHTTP(rec, req)
+
+	status := rec.Code
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusOK)
+	}
+
+	var patientUUID2 gocql.UUID
+	var address2 string
+	var bloodType2 string
+	var dateOfBirth2 int
+	var emergencyContact2 string
+	var gender2 string
+	var medicalNumber2 string
+	var name2 string
+	var notes2 string
+	var phone2 string
+
+	// Query DB for the patient and check if the changed field (address) is modified
+	session.Query("SELECT * FROM patients where patientUUID = ?", patientUUID).Consistency(gocql.One).Scan(&patientUUID2, &address2,
+		&bloodType2, &dateOfBirth2, &emergencyContact2, &gender2, &medicalNumber2,
+		&name2, &notes2, &phone2)
+
+	// Check fields
+	if patientUUID.String() != patientUUID2.String() {
+		t.Errorf("PatientUUID did not match. Got %v, expected %v",
+			patientUUID2.String(), patientUUID.String())
+	}
+	if address != address2 {
+		t.Errorf("Address did not match. Got %v, expected %v", address2, address)
+	}
+	if bloodType != bloodType2 {
+		t.Errorf("Blood Type did not match. Got %v, expected %v", bloodType2, bloodType)
+	}
+	if dateOfBirth != dateOfBirth2 {
+		t.Errorf("DOB did not match. Got %v, expected %v", dateOfBirth2, dateOfBirth)
+	}
+	if emergencyContact != emergencyContact2 {
+		t.Errorf("Emergency Contact did not match. Got %v, expected %v", emergencyContact2, emergencyContact)
+	}
+	if patientGender != gender2 {
+		t.Errorf("Gender did not match. Got %v, expected %v", gender2, patientGender)
+	}
+	if medicalNumber != medicalNumber2 {
+		t.Errorf("Medical Number did not match. Got %v, expected %v", medicalNumber2, medicalNumber)
+	}
+	if patientName != name2 {
+		t.Errorf("Name did not match. Got %v, expected %v", name2, patientName)
+	}
+	if notes != notes2 {
+		t.Errorf("Notes did not match. Got %v, expected %v", notes2, notes)
+	}
+	if patientPhone != phone2 {
+		t.Errorf("Phone Number did not match. Got %v, expected %v", phone2, patientPhone)
+	}
+
+	// Clean up the DB
+	e := session.Query("DELETE FROM patients where patientuuid = ?", patientUUID).Exec()
 	if e != nil {
 		t.Fatal(e)
 	}
