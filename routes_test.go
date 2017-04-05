@@ -663,31 +663,71 @@ func TestFutureAppointmentCreateHandler(t *testing.T) {
 }
 
 func TestFutureAppointmentGetHandler(t *testing.T) {
-	// Variables for Appointments
-	var appointmentUUID gocql.UUID
 	var patientUUID gocql.UUID
+	var appointmentUUID gocql.UUID
 	var doctorUUID gocql.UUID
-	var dateScheduled int
-	var notes string
+	var err error
 
+	// Doctor info
+	doctorUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := "Test Doctor"
+	phone := "123-456-7890"
+	primaryFacility := "FakeAddress1"
+	primarySpeciality := "Faker1"
+	gender := "Male"
+
+	// Patient Info
+	patientUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := "FakeAddress"
+	bloodType := "O"
+	dateOfBirth := "191289601"
+	emergencyContact := "415-555-8271"
+	patientGender := "M"
+	medicalNumber := "151511517"
+	patientName := "Brown Drey"
+	notes := "Broken Legs"
+	patientPhone := "151-454-7878"
+
+	// Appointments Info
+	appointmentUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dateScheduled := 1000
+	appointmentNotes := "Sample"
+
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	// Get the values from the first appointment found
-	session.Query("SELECT * FROM futureAppointments").Consistency(gocql.One).Scan(
-		&appointmentUUID, &dateScheduled, &doctorUUID, &notes, &patientUUID)
+	// Insert these entries directly into the db
+	session.Query(`INSERT INTO doctors (doctorUUID, name, phone, primaryFacility,
+			primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID, name, phone,
+		primaryFacility, primarySpeciality, gender).Exec()
 
-	fmt.Println("Querying AppointmentUUID: ", appointmentUUID.String())
+	session.Query(`INSERT INTO patients (patientUUID, address, bloodType,
+			dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, patientUUID, address, bloodType,
+		dateOfBirth, emergencyContact, patientGender, medicalNumber, patientName, notes,
+		patientPhone).Exec()
+
+	session.Query(`INSERT INTO futureappointments (appointmentUUID, datescheduled,
+		doctoruuid, notes, patientuuid) VALUES (?,?,?,?,?)`,
+		appointmentUUID, dateScheduled, doctorUUID, appointmentNotes, patientUUID).Exec()
 
 	var buff bytes.Buffer
 	buff.WriteString("/futureappointments/appointmentuuid/")
 	buff.WriteString(appointmentUUID.String())
 	endpoint := buff.String()
-
-	fmt.Println("Using endpoint: ", endpoint)
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
@@ -711,7 +751,27 @@ func TestFutureAppointmentGetHandler(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
 		t.Errorf("The response message did not contain the correct patientUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
 	}
-
+	if !strings.Contains(rec.Body.String(), (`"appointmentUUID":"` + appointmentUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct appointmentUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"doctorUUID":"` + doctorUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the correct patientUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"notes":"` + appointmentNotes + `"`)) {
+		t.Errorf("The response message did not contain the correct patientUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
+	}
+	e := session.Query("DELETE FROM patients where patientUUID = ?", patientUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM doctors where doctorUUID = ?", doctorUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM futureAppointments where appointmentUUID = ?", appointmentUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
 }
 
 func TestCompletedAppointmentCreateHandler(t *testing.T) {
