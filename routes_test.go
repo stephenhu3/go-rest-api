@@ -42,7 +42,7 @@ func TestIndexHandler(t *testing.T) {
 
 // This is used as a base for checking database endpoints.
 func TestPatientCreateHandler(t *testing.T) {
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
@@ -105,7 +105,7 @@ func TestPatientGetHandler(t *testing.T) {
 	var notes string
 	var phone string
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
@@ -148,10 +148,19 @@ func TestPatientGetHandler(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
 		t.Errorf("The response message did not contain the correct patientUUID. \n The returned message is: \n %v", rec.Body.String())
 	}
+	if !strings.Contains(rec.Body.String(), (`"gender":"` + gender + `"`)) {
+		t.Errorf("The response message did not contain the correct gender. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"name":"` + name + `"`)) {
+		t.Errorf("The response message did not contain the correct name. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"phoneNumber":"` + phone + `"`)) {
+		t.Errorf("The response message did not contain the correct phone number. \n The returned message is: \n %v", rec.Body.String())
+	}
 }
 
 func TestUserCreateHandler(t *testing.T) {
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
@@ -203,7 +212,7 @@ func TestUserGetHandler(t *testing.T) {
 	var role string
 	var name string
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
@@ -259,7 +268,7 @@ func TestUserGetHandler(t *testing.T) {
 }
 
 func TestDoctorCreateHandler(t *testing.T) {
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
@@ -318,7 +327,7 @@ func TestDoctorGetHandler(t *testing.T) {
 	primarySpeciality := "Faker1"
 	gender := "Male"
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
@@ -416,9 +425,8 @@ func TestDoctorListGetHandler(t *testing.T) {
 	primarySpeciality2 = "Faker2"
 	gender2 = "Female"
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
-	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
@@ -509,7 +517,7 @@ func TestPrescriptionCreate(t *testing.T) {
 
 	var err error
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
@@ -603,7 +611,7 @@ func TestFutureAppointmentCreateHandler(t *testing.T) {
 	var patientUUID gocql.UUID
 	var entry string
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
@@ -709,7 +717,7 @@ func TestFutureAppointmentGetHandler(t *testing.T) {
 func TestCompletedAppointmentCreateHandler(t *testing.T) {
 	var patientUUID gocql.UUID
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
@@ -899,7 +907,7 @@ func TestAppointmentGetByPatientHandler(t *testing.T) {
 	dateScheduled2 := 2022
 	appointmentNotes2 := "Sample2"
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
@@ -911,7 +919,7 @@ func TestAppointmentGetByPatientHandler(t *testing.T) {
 			primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID, name, phone,
 		primaryFacility, primarySpeciality, gender).Exec()
 
-	session.Query(`INSERT INTO patients (patientUuid, address, bloodType,
+	session.Query(`INSERT INTO patients (patientUUID, address, bloodType,
 			dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, patientUUID, address, bloodType,
 		dateOfBirth, emergencyContact, patientGender, medicalNumber, patientName, notes,
@@ -986,30 +994,77 @@ func TestAppointmentGetByPatientHandler(t *testing.T) {
 
 func TestPatientGetByDoctorHandler(t *testing.T) {
 	var patientUUID gocql.UUID
-	// Connect to the database first.
+	var appointmentUUID gocql.UUID
+	var doctorUUID gocql.UUID
+	var err error
+
+	// Doctor info
+	doctorUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := "Test Doctor"
+	phone := "123-456-7890"
+	primaryFacility := "FakeAddress1"
+	primarySpeciality := "Faker1"
+	gender := "Male"
+
+	// Patient Info
+	patientUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := "FakeAddress"
+	bloodType := "O"
+	dateOfBirth := "191289601"
+	emergencyContact := "415-555-8271"
+	patientGender := "M"
+	medicalNumber := "151511517"
+	patientName := "Brown Drey"
+	notes := "Broken Legs"
+	patientPhone := "151-454-7878"
+
+	// Appointments Info
+	appointmentUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dateScheduled := 1000
+	appointmentNotes := "Sample"
+
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
-	// This keyspace can be changed later for tests (i.e. emr_test )
 	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
 
-	patientErr := session.Query("SELECT * FROM patients").Consistency(gocql.One).Scan(&patientUUID,
-		nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	// Insert these entries directly into the db
+	session.Query(`INSERT INTO doctors (doctorUUID, name, phone, primaryFacility,
+			primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID, name, phone,
+		primaryFacility, primarySpeciality, gender).Exec()
 
-	if patientErr != nil {
-		t.Fatal(patientErr)
-	}
+	session.Query(`INSERT INTO patients (patientUUID, address, bloodType,
+			dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, patientUUID, address, bloodType,
+		dateOfBirth, emergencyContact, patientGender, medicalNumber, patientName, notes,
+		patientPhone).Exec()
 
-	endpoint := "/patients/doctoruuid/1cf1dca9-4a4a-4f47-8201-401bbe0fb927"
+	session.Query(`INSERT INTO futureappointments (appointmentUUID, datescheduled,
+		doctoruuid, notes, patientuuid) VALUES (?,?,?,?,?)`,
+		appointmentUUID, dateScheduled, doctorUUID, appointmentNotes, patientUUID).Exec()
+
+	var bb bytes.Buffer
+	bb.WriteString("/patients/doctoruuid/")
+	bb.WriteString(doctorUUID.String())
+	endpoint := bb.String()
+
 	// The doctorUUID is the same as the UUID used for doctors in the test above.
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Manually set the endpoint in the request URI since the
-	// function isn't setting it on its own.
 	req.RequestURI = endpoint
 
 	rec := httptest.NewRecorder()
@@ -1020,9 +1075,31 @@ func TestPatientGetByDoctorHandler(t *testing.T) {
 	if status != http.StatusOK {
 		t.Errorf("Handler returned wrong status code: got %v but want %v", status, http.StatusOK)
 	}
-	// Need to check db for uuids to check in the body
-	if !strings.Contains(rec.Body.String(), patientUUID.String()) {
-		t.Errorf("The response message did not contain the correct doctorUUID. \nMessage: %v \nExpected:%v", rec.Body.String(), patientUUID.String())
+
+	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the patientUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"gender":"` + patientGender + `"`)) {
+		t.Errorf("The response message did not contain the gender. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"name":"` + patientName + `"`)) {
+		t.Errorf("The response message did not contain the name. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"phoneNumber":"` + patientPhone + `"`)) {
+		t.Errorf("The response message did not contain the phone number.\n The returned message is: \n %v", rec.Body.String())
+	}
+
+	e := session.Query("DELETE FROM patients where patientUUID = ?", patientUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM doctors where doctorUUID = ?", doctorUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM futureAppointments where appointmentUUID = ?", appointmentUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
 	}
 }
 
@@ -1067,7 +1144,7 @@ func TestDeleteFutureAppointmentHandler(t *testing.T) {
 	dateScheduled := 1000
 	appointmentNotes := "Sample"
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
@@ -1179,7 +1256,7 @@ func TestPrescriptionGetByPatient(t *testing.T) {
 	}
 	endDate2 := 200000000
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
@@ -1295,7 +1372,7 @@ func TestPatientUpdateHandler(t *testing.T) {
 	notes := "Broken Legs"
 	patientPhone := "151-454-7878"
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
@@ -1432,7 +1509,7 @@ func TestNotificationCreateHandler(t *testing.T) {
 	primarySpeciality := "Faker1"
 	gender := "Male"
 
-	// Connect to the database first.
+	// Connect to the database
 	cluster := gocql.NewCluster(CASSDB)
 	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
