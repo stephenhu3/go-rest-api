@@ -11,6 +11,8 @@ import (
 	"testing"
 )
 
+var testDB string = "emr"
+
 func TestIndexHandler(t *testing.T) {
 	// Create the request
 	req, err := http.NewRequest("GET", "/index", nil)
@@ -43,7 +45,7 @@ func TestPatientCreateHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -106,7 +108,7 @@ func TestPatientGetHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -152,7 +154,7 @@ func TestUserCreateHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -204,7 +206,7 @@ func TestUserGetHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -260,7 +262,7 @@ func TestDoctorCreateHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -319,7 +321,7 @@ func TestDoctorGetHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -417,7 +419,7 @@ func TestDoctorListGetHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -510,7 +512,7 @@ func TestPrescriptionCreate(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -604,7 +606,7 @@ func TestFutureAppointmentCreateHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -661,7 +663,7 @@ func TestFutureAppointmentGetHandler(t *testing.T) {
 	var notes string
 
 	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -710,7 +712,7 @@ func TestCompletedAppointmentCreateHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -772,7 +774,7 @@ func TestCompletedAppointmentGetHandler(t *testing.T) {
 	var notes string
 
 	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -899,7 +901,7 @@ func TestAppointmentGetByPatientHandler(t *testing.T) {
 
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -987,7 +989,7 @@ func TestPatientGetByDoctorHandler(t *testing.T) {
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
 	// This keyspace can be changed later for tests (i.e. emr_test )
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -1067,7 +1069,7 @@ func TestDeleteFutureAppointmentHandler(t *testing.T) {
 
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -1179,7 +1181,7 @@ func TestPrescriptionGetByPatient(t *testing.T) {
 
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -1295,7 +1297,7 @@ func TestPatientUpdateHandler(t *testing.T) {
 
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -1432,7 +1434,7 @@ func TestNotificationCreateHandler(t *testing.T) {
 
 	// Connect to the database first.
 	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
@@ -1508,7 +1510,7 @@ func TestNotificationsGetByDoctorHandler(t *testing.T) {
 	}
 
 	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
+	cluster.Keyspace = testDB
 	cluster.Consistency = gocql.Quorum
 	session, _ := cluster.CreateSession()
 	defer session.Close()
