@@ -288,7 +288,7 @@ GET /appointments/doctoruuid/{doctoruuid}
 
 Response:
 
-HTTP 302 Found
+HTTP 200 Found
 
 ```json
 [
