@@ -1411,3 +1411,171 @@ func TestPatientUpdateHandler(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestNotificationCreateHandler(t *testing.T) {
+	var doctorUUID gocql.UUID
+	var doctorUUID2 gocql.UUID
+	var err error
+
+	// Doctors info
+	doctorUUID, err = gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	doctorUUID2, err = gocql.RandomUUID()
+	name := "Cyclops"
+	name2 := "Wolverine"
+	phone := "123-456-7890"
+	primaryFacility := "FakeAddress1"
+	primarySpeciality := "Faker1"
+	gender := "Male"
+
+	// Connect to the database first.
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	session.Query(`INSERT INTO doctors (doctorUUID, name, phone, primaryFacility,
+				primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID, name, phone,
+		primaryFacility, primarySpeciality, gender).Exec()
+
+	session.Query(`INSERT INTO doctors (doctorUUID, name, phone, primaryFacility,
+					primarySpecialty, gender) VALUES (?,?,?,?,?,?)`, doctorUUID2, name2, phone,
+		primaryFacility, primarySpeciality, gender).Exec()
+
+	var bb bytes.Buffer
+	bb.WriteString(`{"message":"Test Message",`)
+	bb.WriteString(`"senderUUID":"`)
+	bb.WriteString(doctorUUID2.String())
+	bb.WriteString(`","receiverUUID":"`)
+	bb.WriteString(doctorUUID.String())
+	bb.WriteString(`","senderName":"`)
+	bb.WriteString(name)
+	bb.WriteString(`"}`)
+
+	entry := bb.String()
+	// Make the reader using the json string
+	jsonStringReader := strings.NewReader(entry)
+
+	endpoint := "/notifications"
+	req, err := http.NewRequest("POST", endpoint, jsonStringReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.RequestURI = endpoint
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(NotificationCreate)
+	handler.ServeHTTP(rec, req)
+
+	status := rec.Code
+	if status != http.StatusCreated {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusCreated)
+	}
+
+	e := session.Query("DELETE FROM doctors WHERE doctorUUID = ?", doctorUUID).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM doctors WHERE doctorUUID = ?", doctorUUID2).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+}
+
+func TestNotificationsGetByDoctorHandler(t *testing.T) {
+	var err error
+
+	// Enter mock data
+	dateCreated := 1488254862
+	message := "Have you seen Jean?"
+	receiverUUID := "4498720b-0491-424f-8e52-6e13bd33da71"
+	senderName := "Cyclops"
+	senderUUID := "20a5e81c-399f-4777-8bea-9c1fc2388f37"
+	notificationUUID, err := gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dateCreated2 := 1388254862
+	message2 := "Hey man?"
+	notificationUUID2, err := gocql.RandomUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cluster := gocql.NewCluster(CASSDB)
+	cluster.Keyspace = "emr"
+	cluster.Consistency = gocql.Quorum
+	session, _ := cluster.CreateSession()
+	defer session.Close()
+
+	session.Query(`INSERT INTO notifications (receiverUUID, dateCreated,
+		notificationUUID, message, sendername, senderuuid) VALUES (?,?,?,?,?,?)`,
+		receiverUUID, dateCreated, notificationUUID, message, senderName,
+		senderUUID).Exec()
+
+	session.Query(`INSERT INTO notifications (receiverUUID, dateCreated,
+			notificationUUID, message, sendername, senderuuid) VALUES (?,?,?,?,?,?)`,
+		receiverUUID, dateCreated2, notificationUUID2, message2, senderName,
+		senderUUID).Exec()
+
+	// Get the appointments for patient Brown Drey
+	var bb bytes.Buffer
+	bb.WriteString("/notifications/doctoruuid/")
+	bb.WriteString(receiverUUID)
+
+	endpoint := bb.String()
+	fmt.Println(endpoint)
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+
+	// Check if any errors occured when creating the new request
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Must manually set the endpoint URI for some unknown reason.
+	req.RequestURI = endpoint
+
+	// Create a response recorder to record the response
+	rec := httptest.NewRecorder()
+	handler := http.HandlerFunc(NotificationsGetByDoctor)
+	handler.ServeHTTP(rec, req)
+
+	// Get the status code of the page and check if it is OK
+	status := rec.Code
+	if status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusOK)
+	}
+
+	// Check if the response's uuid is correct (Expected value).
+	if !strings.Contains(rec.Body.String(), (`"receiverUUID":"` + receiverUUID + `"`)) {
+		t.Errorf("The response message did not contain the correct doctorUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"senderUUID":"` + senderUUID + `"`)) {
+		t.Errorf("The response message did not contain the correct senderUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"senderName":"` + senderName + `"`)) {
+		t.Errorf("The response message did not contain the senderName. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"message":"` + message + `"`)) {
+		t.Errorf("The response message did not contain the message. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"message":"` + message2 + `"`)) {
+		t.Errorf("The response message did not contain the message. \n The returned message is: \n %v", rec.Body.String())
+	}
+
+	e := session.Query("DELETE FROM notifications where notificationUUID = ? and receiverUUID = ? and datecreated = ?", notificationUUID, receiverUUID, dateCreated).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = session.Query("DELETE FROM notifications where notificationUUID = ?and receiverUUID = ? and datecreated = ?", notificationUUID2, receiverUUID, dateCreated2).Exec()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+}

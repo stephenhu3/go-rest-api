@@ -595,7 +595,7 @@ Request:
 
 Response:
 
-HTTP 201 Created
+HTTP 200 Created
 
 ```json
 {
