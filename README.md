@@ -9,9 +9,22 @@ cd $GOPATH/src/
 go install github.com/{username}/go-rest
 ```
 
+Set up Database:
+```
+cqlsh --request-timeout 120 localhost < cqlsh-setup.cql
+```
+
 Run the program:
 ```
 $GOPATH/bin/go-rest
+```
+
+**DO NOT RUN ON PRODUCTION ENVIRONMENT**
+
+Run the tests:
+```
+cd $GOPATH/src/
+go test github.com/{username}/go-rest
 ```
 -------------------------------------------------------
 # API Reference
@@ -138,6 +151,7 @@ HTTP 201 Created
 ```
 -------------------------------------------------------
 GET /futureappointments/appointmentuuid/{appointmentuuid}
+
 
 **Retrieves a scheduled appointment record**
 
@@ -517,15 +531,15 @@ POST /prescription
 Request:
 
 ```json
-{
-  "patientUUID": 556d9f18-829b-4011-a451-df571b369111,
-  "doctorUUID": 40119f18-829b-4011-a451-b369111df571.
+[{
+  "patientUUID": "556d9f18-829b-4011-a451-df571b369111",
+  "doctorUUID": "40119f18-829b-4011-a451-b369111df571",
   "doctor,omitempty": "Dr Ramoray",
   "drug": "Drug Name",
   "startDate": 191289600,
   "endDate": 191389600,
   "instructions,omitempty": "take twice daily"
-}
+}]
 ```
 
 Response:
@@ -541,7 +555,7 @@ HTTP 201 Created
 -------------------------------------------------------
 GET /prescriptions/patientuuid/{patientuuid}
 
-**Retrieves a list of a patients prescriptions **
+**Retrieves a list of a patients prescriptions**
 
 Response:
 

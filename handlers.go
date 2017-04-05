@@ -284,9 +284,9 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 		medicalNumber, name, notes, phone)
 
 	// insert new patient entry
-	if err := session.Query(`INSERT INTO patients (patientUuid, 
-		address, bloodType, dateOfBirth, emergencyContact, gender, 
-		medicalNumber, name, notes, phone ) 
+	if err := session.Query(`INSERT INTO patients (patientUuid,
+		address, bloodType, dateOfBirth, emergencyContact, gender,
+		medicalNumber, name, notes, phone )
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		patientUUID, address, bloodType, dateOfBirth, emergencyContact,
 		gender, medicalNumber, name, notes, phone).Exec(); err != nil {
