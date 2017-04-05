@@ -1074,6 +1074,12 @@ func TestAppointmentGetByDoctorHandler(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
 		t.Errorf("The response message did not contain the patientUUID. \n The returned message is: \n %v", rec.Body.String())
 	}
+	if !strings.Contains(rec.Body.String(), (`"appointmentUUID":"` + appointmentUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the appointmentUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"appointmentUUID":"` + appointmentUUID2.String() + `"`)) {
+		t.Errorf("The response message did not contain the appointmentUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
 
 	// Clean up the DB
 	e := session.Query("DELETE FROM patients where patientuuid = ?", patientUUID).Exec()
@@ -1207,6 +1213,12 @@ func TestAppointmentGetByPatientHandler(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
 		t.Errorf("The response message did not contain the patientUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"appointmentUUID":"` + appointmentUUID.String() + `"`)) {
+		t.Errorf("The response message did not contain the appointmentUUID. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"appointmentUUID":"` + appointmentUUID2.String() + `"`)) {
+		t.Errorf("The response message did not contain the appointmentUUID. \n The returned message is: \n %v", rec.Body.String())
 	}
 
 	// Clean up the DB
