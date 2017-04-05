@@ -1071,6 +1071,9 @@ func TestAppointmentGetByDoctorHandler(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), (`"notes":"` + appointmentNotes + `"`)) {
 		t.Errorf("The response message did not contain a correct note. \n The returned message is: \n %v", rec.Body.String())
 	}
+	if !strings.Contains(rec.Body.String(), (`"notes":"` + appointmentNotes2 + `"`)) {
+		t.Errorf("The response message did not contain a correct note. \n The returned message is: \n %v", rec.Body.String())
+	}
 	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
 		t.Errorf("The response message did not contain the patientUUID. \n The returned message is: \n %v", rec.Body.String())
 	}
@@ -1209,6 +1212,9 @@ func TestAppointmentGetByPatientHandler(t *testing.T) {
 		t.Errorf("The response message did not contain the correct doctorUUID. \n The returned message is: \n %v", rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), (`"notes":"` + appointmentNotes + `"`)) {
+		t.Errorf("The response message did not contain a correct note. \n The returned message is: \n %v", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), (`"notes":"` + appointmentNotes2 + `"`)) {
 		t.Errorf("The response message did not contain a correct note. \n The returned message is: \n %v", rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), (`"patientUUID":"` + patientUUID.String() + `"`)) {
