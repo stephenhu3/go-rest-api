@@ -129,6 +129,7 @@ func UserGet(w http.ResponseWriter, r *http.Request) {
 		searchUUID).Consistency(gocql.One).Scan(&userUUID, &role, &name); err != nil {
 		// user not found
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(Status{Code: http.StatusNotFound,
 			Message: "Not Found"})
