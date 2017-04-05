@@ -534,11 +534,11 @@ Request:
 [{
   "patientUUID": "556d9f18-829b-4011-a451-df571b369111",
   "doctorUUID": "40119f18-829b-4011-a451-b369111df571",
-  "doctor,omitempty": "Dr Ramoray",
+  "doctor": "Dr Ramoray",
   "drug": "Drug Name",
   "startDate": 191289600,
   "endDate": 191389600,
-  "instructions,omitempty": "take twice daily"
+  "instructions": "take twice daily"
 }]
 ```
 
@@ -564,14 +564,14 @@ HTTP 200 Found
 ```json
 [
 {
-  "patientUUID": 556d9f18-829b-4011-a451-df571b369111,
-  "doctorUUID": 40119f18-829b-4011-a451-b369111df571.
-  "prescriptionUUID": 57c7aea1-9fea-422d-ae35-dbf8ce5f5dda
-  "doctor,omitempty": "Dr Ramoray",
+  "patientUUID": "556d9f18-829b-4011-a451-df571b369111",
+  "doctorUUID": "40119f18-829b-4011-a451-b369111df571",
+  "prescriptionUUID": "57c7aea1-9fea-422d-ae35-dbf8ce5f5dda",
+  "doctor": "Dr Ramoray",
   "drug": "Drug Name",
   "startDate": 191289600,
   "endDate": 191389600,
-  "instructions,omitempty": "take twice daily"
+  "instructions": "take twice daily"
 }
 ]
 ```
@@ -676,7 +676,7 @@ HTTP 200 Found
   {
     "documentUUID": "4498720b-0491-424f-8e52-6e13bd33da71",
     "patientUUID": "20a5e81c-399f-4777-8bea-9c1fc2388f37",
-    "filename": "fileName.pdf"
+    "filename": "fileName.pdf",
     "dateUploaded": 1488254862
   }
 ]
