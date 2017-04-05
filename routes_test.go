@@ -561,6 +561,8 @@ func TestPrescriptionCreate(t *testing.T) {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, patientUUID, address, bloodType,
 		dateOfBirth, emergencyContact, gender, medicalNumber, name, notes, phone).Exec()
 
+	numPrescriptionsBefore := session.Query("SELECT * FROM prescriptions").Iter().NumRows()
+
 	var bb bytes.Buffer
 	bb.WriteString(`[{"patientUUID":"`)
 	bb.WriteString(patientUUID.String())
@@ -593,6 +595,12 @@ func TestPrescriptionCreate(t *testing.T) {
 	status := rec.Code
 	if status != http.StatusCreated {
 		t.Errorf("Handler returned wrong status code: got %v, want %v", status, http.StatusCreated)
+	}
+
+	numPrescriptionsAfter := session.Query("SELECT * FROM prescriptions").Iter().NumRows()
+
+	if numPrescriptionsAfter != numPrescriptionsBefore+1 {
+		t.Errorf("Expected to have %v prescription, but only have %v", numPrescriptionsBefore+1, numPrescriptionsAfter)
 	}
 
 	// CLean up
