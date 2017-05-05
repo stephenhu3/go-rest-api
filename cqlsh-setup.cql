@@ -1,45 +1,107 @@
-CREATE KEYSPACE emr WITH replication = {
-  'class': 'SimpleStrategy',
-  'replication_factor': '1'
-};
+DROP KEYSPACE IF EXISTS emr;
+
+CREATE KEYSPACE IF NOT EXISTS emr
+	WITH replication = {
+	  'class': 'SimpleStrategy',
+	  'replication_factor': '1'
+	};
 
 USE emr;
 
 CREATE TABLE patients (
 	patientUUID uuid,
-	age int,
+	dateOfBirth int,
 	gender text,
 	name text,
-	insuranceNumber text,
-	PRIMARY KEY (patientUuid)
+	medicalNumber text,
+	bloodType text,
+	emergencyContact text,
+	phone text,
+	address text,
+	notes text,
+	PRIMARY KEY (patientUUID)
 );
-
+CREATE INDEX patientsMedicalNumber ON emr.patients (medicalNumber);
 
 CREATE TABLE completedAppointments (
-	appointmentUuid uuid,
-	patientUuid uuid,
-	doctorUuid uuid,
+	appointmentUUID uuid,
+	patientUUID uuid,
+	doctorUUID uuid,
 	dateVisited int,
 	breathingRate int,
 	heartRate int,
 	bloodOxygenLevel int,
 	bloodPressure int,
 	notes text,
-	PRIMARY KEY (appointmentUuid)
+	PRIMARY KEY (appointmentUUID)
 );
-CREATE INDEX patientUuid ON emr.completedAppointments (patientUuid);
-CREATE INDEX doctorUuid ON emr.completedAppointments (doctorUuid);
-CREATE INDEX dateVisited ON emr.completedAppointments (dateVisited);
+CREATE INDEX completedAppointmentPatientUUID ON emr.completedAppointments (patientUUID);
+CREATE INDEX completedAppointmentDoctorUUID ON emr.completedAppointments (doctorUUID);
+CREATE INDEX completedAppointmentDateVisited ON emr.completedAppointments (dateVisited);
 
 
 CREATE TABLE futureAppointments (
-	appointmentUuid uuid,
-	patientUuid uuid,
-	doctorUuid uuid,
+	appointmentUUID uuid,
+	patientUUID uuid,
+	doctorUUID uuid,
 	dateScheduled int,
 	notes text,
-	PRIMARY KEY (appointmentUuid)
+	PRIMARY KEY (appointmentUUID)
 );
-CREATE INDEX schedPatientUuid ON emr.futureAppointments (patientUuid);
-CREATE INDEX schedDoctorUuid ON emr.futureAppointments (doctorUuid);
-CREATE INDEX dateScheduled ON emr.futureAppointments (dateScheduled);
+CREATE INDEX futureAppointmentPatientUUID ON emr.futureAppointments (patientUUID);
+CREATE INDEX futureAppointmentDoctorUUID ON emr.futureAppointments (doctorUUID);
+CREATE INDEX futureAppointmentDateScheduled ON emr.futureAppointments (dateScheduled);
+
+
+CREATE TABLE doctors (
+	doctorUUID uuid,
+	name text,
+	phone text,
+	primaryFacility text,
+	primarySpecialty text,
+	gender text,
+	PRIMARY KEY (doctorUUID)
+);
+
+CREATE TABLE users (
+	username text,
+	salt blob,
+	saltedHash blob,
+	userUUID uuid,
+	role text,
+	name text,
+	PRIMARY KEY (username)
+);
+CREATE INDEX usersUserUUID ON emr.users (userUUID);
+
+CREATE TABLE prescriptions (
+	patientUUID uuid,
+	prescriptionUUID uuid,
+	doctorUUID uuid,
+	doctorName text,
+	drug text,
+	startDate int,
+	endDate int,
+	instructions text,
+	PRIMARY KEY (patientUUID, endDate, prescriptionUUID)
+);
+
+CREATE TABLE notifications (
+	dateCreated int,
+	message text,
+	notificationuuid uuid,
+	receiverUUID uuid,
+	senderName text,
+	senderUUID uuid,
+	PRIMARY KEY (receiverUUID, dateCreated, notificationuuid)
+) WITH CLUSTERING ORDER BY (dateCreated DESC);
+
+CREATE TABLE documents (
+	documentUUID uuid,
+	patientUUID uuid,
+	filename text,
+	content blob,
+	dateUploaded int,
+	PRIMARY KEY (documentUUID)
+);
+CREATE INDEX documentsPatientUUID ON emr.documents (patientUUID);
