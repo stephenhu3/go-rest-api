@@ -14,14 +14,12 @@ Set up Database:
 cqlsh --request-timeout 120 localhost < cqlsh-setup.cql
 ```
 
-Run the program:
+Run the service:
 ```
 $GOPATH/bin/go-rest
 ```
 
-**DO NOT RUN ON PRODUCTION ENVIRONMENT**
-
-Run the tests:
+Run the tests (run only on test database environment):
 ```
 cd $GOPATH/src/
 go test github.com/{username}/go-rest

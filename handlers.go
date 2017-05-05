@@ -22,8 +22,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 }
 
 // Added JSON config file and parser to read from, but removed for demo
-const UIAddr = "http://192.168.1.64:3000"
-const CASSDB = "127.0.0.1"
+const localDB = "127.0.0.1"
+const sampleKeyspace = "emr"
 
 func PreFlight(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", "0")
@@ -36,17 +36,25 @@ func PreFlight(w http.ResponseWriter, r *http.Request) {
 	// json.NewEncoder(w).Encode()
 }
 
+func initializeSession(keyspace string, cassandraNodes ...string) (*gocql.Session, error) {
+	// connect to the cluster of nodes
+	cluster := gocql.NewCluster(cassandraNodes...)
+	cluster.Keyspace = keyspace
+	cluster.Consistency = gocql.Quorum
+	session, err := cluster.CreateSession()
+	if err != nil {
+		panic("Unable to connect to Cassandra")
+	}
+	return session, nil
+}
+
 /*
 Validates a user credentials
 Method: POST
 Endpoint: /login
 */
 func UserAuthenticate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	err := r.ParseForm()
@@ -107,11 +115,7 @@ Method: GET
 Endpoint: /users/useruuid/{useruuid}
 */
 func UserGet(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -156,11 +160,7 @@ Method: POST
 Endpoint: /users
 */
 func UserCreate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
@@ -249,11 +249,7 @@ Method: POST
 Endpoint: /patients
 */
 func PatientCreate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
@@ -295,8 +291,8 @@ func PatientCreate(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusBadRequest)
-		       json.NewEncoder(w).Encode(Status{Code: http.StatusBadRequest,
-		               Message: "Patient Not Created"})
+		json.NewEncoder(w).Encode(Status{Code: http.StatusBadRequest,
+			Message: "Patient Not Created"})
 	}
 
 	// send success response
@@ -313,11 +309,7 @@ Method: GET
 Endpoint: /patients/patientuuid/{patientuuid}
 */
 func PatientGet(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -373,11 +365,7 @@ Method: GET
 Endpoint: /patients/all
 */
 func PatientListGet(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	// Get all patients of current clinic
@@ -397,8 +385,8 @@ func PatientListGet(w http.ResponseWriter, r *http.Request) {
 		for iter.Scan(&patientUUID, nil, nil, &dateOfBirth, nil, &gender, nil,
 			&name, nil, &phone) {
 
-			patientList[i] = Patient{ PatientUUID: patientUUID, DateOfBirth: dateOfBirth,
-				Gender: gender, Name: name, Phone: phone }
+			patientList[i] = Patient{PatientUUID: patientUUID, DateOfBirth: dateOfBirth,
+				Gender: gender, Name: name, Phone: phone}
 			i++
 		}
 	}
@@ -411,18 +399,13 @@ func PatientListGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 /*
 Update a patient entry
 Method: PUT
 Endpoint: /patients
 */
 func PatientUpdate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
@@ -493,11 +476,7 @@ Method: GET
 Endpoint: /appointments/patientuuid/{patientuuid}
 */
 func AppointmentGetByPatient(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -582,11 +561,7 @@ Method: GET
 Endpoint: /appointments/doctoruuid/{doctoruuid}
 */
 func AppointmentGetByDoctor(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -672,11 +647,7 @@ Method: GET
 Endpoint: /patients/doctoruuid/{doctoruuid}
 */
 func PatientGetByDoctor(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -754,11 +725,7 @@ Method: POST
 Endpoint: /futureappointments
 */
 func FutureAppointmentCreate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
@@ -802,11 +769,7 @@ Method: GET
 Endpoint: /futureappointments/appointmentuuid/{appointmentuuid}
 */
 func FutureAppointmentGet(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -854,11 +817,7 @@ Method: POST
 Endpoint: /completedappointments
 */
 func CompletedAppointmentCreate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
@@ -920,11 +879,7 @@ Method: GET
 Endpoint: /completedappointments/appointmentuuid/{appointmentuuid}
 */
 func CompletedAppointmentGet(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -978,11 +933,7 @@ Method: DELETE
 Endpoint: /futureappointments/appointmentuuid/{appointmentuuid}
 */
 func FutureAppointmentDelete(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -1021,11 +972,7 @@ Method: POST
 Endpoint: /doctors
 */
 func DoctorCreate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
@@ -1069,11 +1016,7 @@ Method: GET
 Endpoint: /doctors/doctoruuid/{doctoruuid}
 */
 func DoctorGet(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -1122,11 +1065,7 @@ Method: GET
 Endpoint: /doctors
 */
 func DoctorListGet(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	// Get all doctors of current clinic
@@ -1168,11 +1107,7 @@ Method: GET
 Endpoint: /prescriptions/patientuuid/{patientuuid}
 */
 func PrescriptionsGetByPatient(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -1225,11 +1160,7 @@ Method: POST
 Endpoint: /prescription
 */
 func PrescriptionCreate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
@@ -1280,11 +1211,7 @@ Method: POST
 Endpoint: /notifications
 */
 func NotificationCreate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	decoder := json.NewDecoder(r.Body)
@@ -1332,11 +1259,7 @@ Method: GET
 Endpoint: /notifications/doctoruuid/{doctoruuid}
 */
 func NotificationsGetByDoctor(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -1385,11 +1308,7 @@ Method: POST
 Endpoint: /document
 */
 func DocumentCreate(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	// generate new randomly generated UUID (version 4)
@@ -1439,11 +1358,7 @@ Method: GET
 Endpoint: /documents/documentuuid/{documentuuid}
 */
 func DocumentGet(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
@@ -1523,11 +1438,7 @@ Method: GET
 Endpoint: /documents/patientuuid/{patientuuid}
 */
 func DocumentListGetByPatient(w http.ResponseWriter, r *http.Request) {
-	// connect to the cluster
-	cluster := gocql.NewCluster(CASSDB)
-	cluster.Keyspace = "emr"
-	cluster.Consistency = gocql.Quorum
-	session, _ := cluster.CreateSession()
+	session, _ := initializeSession(sampleKeyspace, localDB)
 	defer session.Close()
 
 	if URI := strings.Split(r.RequestURI, "/"); len(URI) != 4 {
